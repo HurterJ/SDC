@@ -41,7 +41,7 @@ CREATE TRIGGER on_auth_user_created
   FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
 
 -- ============================================================
--- PROJECTS
+-- PROJECTS (table seulement, sans la policy SELECT pour l'instant)
 -- ============================================================
 CREATE TABLE public.projects (
   id          UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
@@ -56,14 +56,7 @@ CREATE TABLE public.projects (
 
 ALTER TABLE public.projects ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "Membres voient leurs projets"
-  ON public.projects FOR SELECT
-  TO authenticated
-  USING (
-    owner_id = auth.uid() OR
-    id IN (SELECT project_id FROM public.project_members WHERE user_id = auth.uid())
-  );
-
+-- Ces policies ne referencent pas project_members, on les crée maintenant
 CREATE POLICY "Owner crée des projets"
   ON public.projects FOR INSERT
   TO authenticated WITH CHECK (owner_id = auth.uid());
@@ -77,7 +70,7 @@ CREATE POLICY "Owner supprime ses projets"
   TO authenticated USING (owner_id = auth.uid());
 
 -- ============================================================
--- PROJECT MEMBERS
+-- PROJECT MEMBERS (créé avant la policy SELECT de projects)
 -- ============================================================
 CREATE TYPE public.project_role AS ENUM ('conducteur', 'installateur', 'lecteur');
 
@@ -99,7 +92,7 @@ CREATE POLICY "Membres voient les membres du projet"
     project_id IN (
       SELECT id FROM public.projects WHERE owner_id = auth.uid()
       UNION
-      SELECT project_id FROM public.project_members WHERE user_id = auth.uid()
+      SELECT project_id FROM public.project_members pm2 WHERE pm2.user_id = auth.uid()
     )
   );
 
@@ -110,9 +103,20 @@ CREATE POLICY "Conducteurs gèrent les membres"
     project_id IN (
       SELECT id FROM public.projects WHERE owner_id = auth.uid()
       UNION
-      SELECT project_id FROM public.project_members
-      WHERE user_id = auth.uid() AND role = 'conducteur'
+      SELECT project_id FROM public.project_members pm2
+      WHERE pm2.user_id = auth.uid() AND pm2.role = 'conducteur'
     )
+  );
+
+-- ============================================================
+-- POLICY SELECT sur projects (maintenant que project_members existe)
+-- ============================================================
+CREATE POLICY "Membres voient leurs projets"
+  ON public.projects FOR SELECT
+  TO authenticated
+  USING (
+    owner_id = auth.uid() OR
+    id IN (SELECT project_id FROM public.project_members WHERE user_id = auth.uid())
   );
 
 -- ============================================================
