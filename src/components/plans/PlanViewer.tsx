@@ -112,6 +112,7 @@ export default function PlanViewer({
                     <Page
                       pageNumber={1}
                       width={pdfWidth}
+                      devicePixelRatio={Math.min(window.devicePixelRatio * 4, 8)}
                       renderAnnotationLayer={false}
                       renderTextLayer={false}
                       className="shadow-2xl"
