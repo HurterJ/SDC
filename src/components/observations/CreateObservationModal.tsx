@@ -1,10 +1,10 @@
 'use client'
 
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useRef, useEffect } from 'react'
 import { useDropzone } from 'react-dropzone'
 import { createClient } from '@/lib/supabase/client'
 import { Observation, ObservationPriority } from '@/types'
-import { X, Loader2, Upload, ImageIcon } from 'lucide-react'
+import { X, Loader2, Upload, ImageIcon, Camera } from 'lucide-react'
 import { v4 as uuidv4 } from 'uuid'
 
 interface Props {
@@ -25,9 +25,50 @@ const PRIORITIES: { value: ObservationPriority; label: string }[] = [
 ]
 
 const CATEGORIES = [
-  'Gros \u0153uvre', 'Second \u0153uvre', '\u00c9lectricit\u00e9', 'Plomberie',
-  'CVC', 'Menuiseries', 'Rev\u00eatements', 'Peinture', 'Autre',
+  'Gros œuvre', 'Second œuvre', 'Électricité', 'Plomberie',
+  'CVC', 'Menuiseries', 'Revêtements', 'Peinture', 'Autre',
 ]
+
+// Compression canvas → WebP 1920×1080 max, qualité 0.82
+async function compressImage(file: File): Promise<File> {
+  const MAX_W = 1920
+  const MAX_H = 1080
+  const QUALITY = 0.82
+  return new Promise((resolve) => {
+    const img = new Image()
+    const objectUrl = URL.createObjectURL(file)
+    img.onload = () => {
+      URL.revokeObjectURL(objectUrl)
+      let { width, height } = img
+      if (width > MAX_W || height > MAX_H) {
+        const ratio = Math.min(MAX_W / width, MAX_H / height)
+        width = Math.round(width * ratio)
+        height = Math.round(height * ratio)
+      }
+      const canvas = document.createElement('canvas')
+      canvas.width = width
+      canvas.height = height
+      const ctx = canvas.getContext('2d')!
+      ctx.drawImage(img, 0, 0, width, height)
+      canvas.toBlob(
+        (blob) => {
+          if (!blob) return resolve(file)
+          const name = file.name.replace(/\.[^.]+$/, '.webp')
+          resolve(new File([blob], name, { type: 'image/webp' }))
+        },
+        'image/webp',
+        QUALITY
+      )
+    }
+    img.onerror = () => { URL.revokeObjectURL(objectUrl); resolve(file) }
+    img.src = objectUrl
+  })
+}
+
+function isMobile() {
+  if (typeof navigator === 'undefined') return false
+  return /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent)
+}
 
 export default function CreateObservationModal({
   projectId, planId, pinX, pinY, userId, onClose, onCreated,
@@ -38,23 +79,53 @@ export default function CreateObservationModal({
   const [category, setCategory] = useState('')
   const [dueDate, setDueDate] = useState('')
   const [selectedFiles, setSelectedFiles] = useState<File[]>([])
+  const [previews, setPreviews] = useState<string[]>([])
   const [loading, setLoading] = useState(false)
   const [uploadStep, setUploadStep] = useState<'idle' | 'creating' | 'uploading'>('idle')
+  const [mobile, setMobile] = useState(false)
+  const cameraInputRef = useRef<HTMLInputElement>(null)
   const supabase = createClient()
 
+  useEffect(() => {
+    setMobile(isMobile())
+  }, [])
+
+  // Nettoyer les object URLs au démontage
+  useEffect(() => {
+    return () => { previews.forEach(URL.revokeObjectURL) }
+  }, [previews])
+
+  function addFiles(newFiles: File[]) {
+    setSelectedFiles((prev) => {
+      const combined = [...prev, ...newFiles].slice(0, 5)
+      setPreviews(combined.map((f) => URL.createObjectURL(f)))
+      return combined
+    })
+  }
+
+  function removeFile(index: number) {
+    setSelectedFiles((prev) => {
+      const next = prev.filter((_, i) => i !== index)
+      setPreviews(next.map((f) => URL.createObjectURL(f)))
+      return next
+    })
+  }
+
   const onDrop = useCallback((acceptedFiles: File[]) => {
-    setSelectedFiles((prev) => [...prev, ...acceptedFiles].slice(0, 5))
+    addFiles(acceptedFiles)
   }, [])
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
-    accept: { 'image/*': ['.jpg', '.jpeg', '.png', '.webp'] },
-    maxSize: 10 * 1024 * 1024,
+    accept: { 'image/*': ['.jpg', '.jpeg', '.png', '.webp', '.heic'] },
+    maxSize: 20 * 1024 * 1024,
     maxFiles: 5,
   })
 
-  function removeFile(index: number) {
-    setSelectedFiles((prev) => prev.filter((_, i) => i !== index))
+  function handleCameraCapture(e: React.ChangeEvent<HTMLInputElement>) {
+    const files = Array.from(e.target.files ?? [])
+    if (files.length) addFiles(files)
+    e.target.value = ''
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -90,11 +161,12 @@ export default function CreateObservationModal({
     if (selectedFiles.length > 0) {
       setUploadStep('uploading')
       for (const file of selectedFiles) {
-        const ext = file.name.split('.').pop()
+        const compressed = await compressImage(file)
+        const ext = compressed.name.split('.').pop() ?? 'webp'
         const path = `${data.id}/${uuidv4()}.${ext}`
         const { error: uploadError } = await supabase.storage
           .from('photos')
-          .upload(path, file)
+          .upload(path, compressed, { contentType: compressed.type })
         if (!uploadError) {
           const { data: urlData } = supabase.storage.from('photos').getPublicUrl(path)
           await supabase.from('observation_photos').insert({
@@ -113,10 +185,10 @@ export default function CreateObservationModal({
   }
 
   const stepLabel = uploadStep === 'creating'
-    ? 'Cr\u00e9ation...'
+    ? 'Création...'
     : uploadStep === 'uploading'
     ? `Upload photos (${selectedFiles.length})...`
-    : "Cr\u00e9er l'observation"
+    : "Créer l'observation"
 
   return (
     <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
@@ -149,13 +221,13 @@ export default function CreateObservationModal({
               onChange={(e) => setDescription(e.target.value)}
               rows={2}
               className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-slate-900 resize-none"
-              placeholder="Description d\u00e9taill\u00e9e..."
+              placeholder="Description détaillée..."
             />
           </div>
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Priorit\u00e9</label>
+              <label className="block text-sm font-medium text-slate-700 mb-1">Priorité</label>
               <select
                 value={priority}
                 onChange={(e) => setPriority(e.target.value as ObservationPriority)}
@@ -167,13 +239,13 @@ export default function CreateObservationModal({
               </select>
             </div>
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Cat\u00e9gorie</label>
+              <label className="block text-sm font-medium text-slate-700 mb-1">Catégorie</label>
               <select
                 value={category}
                 onChange={(e) => setCategory(e.target.value)}
                 className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-slate-900 bg-white"
               >
-                <option value="">{`\u2014 S\u00e9lectionner \u2014`}</option>
+                <option value="">— Sélectionner —</option>
                 {CATEGORIES.map((c) => (
                   <option key={c} value={c}>{c}</option>
                 ))}
@@ -182,7 +254,7 @@ export default function CreateObservationModal({
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">Date d'\u00e9ch\u00e9ance</label>
+            <label className="block text-sm font-medium text-slate-700 mb-1">Date d'échéance</label>
             <input
               type="date"
               value={dueDate}
@@ -194,18 +266,24 @@ export default function CreateObservationModal({
           {/* Photos */}
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-1">
-              Photos <span className="text-slate-400 font-normal">(optionnel, max 5)</span>
+              Photos <span className="text-slate-400 font-normal">(optionnel, max 5 — compressées auto)</span>
             </label>
+
+            {/* Input caméra hidden pour mobile */}
+            <input
+              ref={cameraInputRef}
+              type="file"
+              accept="image/*"
+              capture="environment"
+              className="hidden"
+              onChange={handleCameraCapture}
+            />
 
             {selectedFiles.length > 0 && (
               <div className="grid grid-cols-4 gap-2 mb-2">
-                {selectedFiles.map((file, i) => (
+                {previews.map((src, i) => (
                   <div key={i} className="relative group aspect-square rounded-lg overflow-hidden bg-slate-100">
-                    <img
-                      src={URL.createObjectURL(file)}
-                      alt={file.name}
-                      className="w-full h-full object-cover"
-                    />
+                    <img src={src} alt="" className="w-full h-full object-cover" />
                     <button
                       type="button"
                       onClick={() => removeFile(i)}
@@ -228,21 +306,42 @@ export default function CreateObservationModal({
             )}
 
             {selectedFiles.length === 0 && (
-              <div
-                {...getRootProps()}
-                className={`border-2 border-dashed rounded-lg p-4 text-center cursor-pointer transition-colors ${
-                  isDragActive
-                    ? 'border-blue-400 bg-blue-50'
-                    : 'border-slate-200 hover:border-blue-300 hover:bg-slate-50'
-                }`}
-              >
-                <input {...getInputProps()} />
-                <Upload className="w-5 h-5 text-slate-400 mx-auto mb-1" />
-                <p className="text-xs text-slate-500">
-                  {isDragActive ? 'D\u00e9posez ici' : 'Glisser des photos ou cliquer'}
-                </p>
-                <p className="text-xs text-slate-400 mt-0.5">JPG, PNG, WebP \u2014 10 Mo max</p>
-              </div>
+              mobile ? (
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => cameraInputRef.current?.click()}
+                    className="flex flex-col items-center gap-2 py-4 border-2 border-dashed border-slate-200 rounded-lg hover:border-blue-300 hover:bg-slate-50 transition-colors"
+                  >
+                    <Camera className="w-6 h-6 text-slate-400" />
+                    <span className="text-xs text-slate-500">Prendre une photo</span>
+                  </button>
+                  <div
+                    {...getRootProps()}
+                    className="flex flex-col items-center gap-2 py-4 border-2 border-dashed border-slate-200 rounded-lg hover:border-blue-300 hover:bg-slate-50 transition-colors cursor-pointer"
+                  >
+                    <input {...getInputProps()} />
+                    <ImageIcon className="w-6 h-6 text-slate-400" />
+                    <span className="text-xs text-slate-500">Depuis la galerie</span>
+                  </div>
+                </div>
+              ) : (
+                <div
+                  {...getRootProps()}
+                  className={`border-2 border-dashed rounded-lg p-4 text-center cursor-pointer transition-colors ${
+                    isDragActive
+                      ? 'border-blue-400 bg-blue-50'
+                      : 'border-slate-200 hover:border-blue-300 hover:bg-slate-50'
+                  }`}
+                >
+                  <input {...getInputProps()} />
+                  <Upload className="w-5 h-5 text-slate-400 mx-auto mb-1" />
+                  <p className="text-xs text-slate-500">
+                    {isDragActive ? 'Déposez ici' : 'Glisser des photos ou cliquer'}
+                  </p>
+                  <p className="text-xs text-slate-400 mt-0.5">JPG, PNG, WebP — 20 Mo max</p>
+                </div>
+              )
             )}
           </div>
         </form>
