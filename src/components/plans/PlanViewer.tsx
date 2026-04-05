@@ -7,7 +7,6 @@ import { Observation } from '@/types'
 import { PIN_COLORS, STATUS_LABELS } from '@/lib/utils/status'
 import { ZoomIn, ZoomOut, Maximize2, Plus, Loader2 } from 'lucide-react'
 
-// Worker PDF.js via CDN
 pdfjs.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`
 
 interface Props {
@@ -19,17 +18,12 @@ interface Props {
 }
 
 export default function PlanViewer({
-  planUrl,
-  observations,
-  canAddPin,
-  onPinClick,
-  onMapClick,
+  planUrl, observations, canAddPin, onPinClick, onMapClick,
 }: Props) {
   const [addingPin, setAddingPin] = useState(false)
   const [pdfWidth, setPdfWidth] = useState(900)
   const contentRef = useRef<HTMLDivElement>(null)
   const wrapperRef = useRef<HTMLDivElement>(null)
-
   const isPdf = /\.pdf($|\?)/i.test(planUrl)
 
   useEffect(() => {
@@ -59,8 +53,9 @@ export default function PlanViewer({
         maxScale={6}
         disabled={addingPin}
       >
-        {({ zoomIn, zoomOut, resetTransform }) => (
+        {({ zoomIn, zoomOut, resetTransform, state }) => (
           <>
+            {/* Contrôles zoom */}
             <div className="absolute top-4 right-4 z-20 flex flex-col gap-2">
               <button onClick={() => zoomIn()} className="w-9 h-9 bg-white rounded-lg shadow flex items-center justify-center hover:bg-slate-50 transition-colors" title="Zoom +">
                 <ZoomIn className="w-4 h-4 text-slate-700" />
@@ -73,6 +68,12 @@ export default function PlanViewer({
               </button>
             </div>
 
+            {/* Indicateur de zoom */}
+            <div className="absolute top-4 right-16 z-20 bg-white/80 backdrop-blur rounded-lg px-2 py-1 text-xs text-slate-600 font-mono">
+              {Math.round(state.scale * 100)}%
+            </div>
+
+            {/* Bouton ajout pin */}
             {canAddPin && (
               <button
                 onClick={() => setAddingPin(!addingPin)}
@@ -127,12 +128,14 @@ export default function PlanViewer({
                   />
                 )}
 
+                {/* Pins — taille inversement proportionnelle au zoom */}
                 {observations.map((obs) => {
                   if (obs.plan_x == null || obs.plan_y == null) return null
                   return (
                     <PinMarker
                       key={obs.id}
                       observation={obs}
+                      scale={state.scale}
                       onClick={() => onPinClick(obs)}
                     />
                   )
@@ -143,12 +146,15 @@ export default function PlanViewer({
         )}
       </TransformWrapper>
 
+      {/* L\u00e9gende statuts */}
       <div className="absolute bottom-4 left-4 z-20 bg-white/90 backdrop-blur rounded-lg shadow px-3 py-2">
         <div className="flex flex-wrap gap-2">
           {Object.entries(PIN_COLORS).map(([status, color]) => (
             <div key={status} className="flex items-center gap-1">
               <div className="w-3 h-3 rounded-full" style={{ backgroundColor: color }} />
-              <span className="text-xs text-slate-600">{STATUS_LABELS[status as keyof typeof STATUS_LABELS]}</span>
+              <span className="text-xs text-slate-600">
+                {STATUS_LABELS[status as keyof typeof STATUS_LABELS]}
+              </span>
             </div>
           ))}
         </div>
@@ -157,29 +163,59 @@ export default function PlanViewer({
   )
 }
 
-function PinMarker({ observation, onClick }: { observation: Observation; onClick: () => void }) {
+function PinMarker({
+  observation, scale, onClick,
+}: {
+  observation: Observation
+  scale: number
+  onClick: () => void
+}) {
   const [hovered, setHovered] = useState(false)
   const color = PIN_COLORS[observation.status]
 
+  const BASE_SIZE = 28
+  const size = BASE_SIZE / scale
+
   return (
     <div
-      className="absolute -translate-x-1/2 -translate-y-1/2 z-10 cursor-pointer group"
-      style={{ left: `${observation.plan_x}%`, top: `${observation.plan_y}%` }}
+      className="absolute z-10 cursor-pointer"
+      style={{
+        left: `${observation.plan_x}%`,
+        top: `${observation.plan_y}%`,
+        width: size,
+        height: size,
+        marginLeft: -size / 2,
+        marginTop: -size / 2,
+        transition: 'width 0.1s, height 0.1s, margin 0.1s',
+      }}
       onClick={(e) => { e.stopPropagation(); onClick() }}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
     >
       <div
-        className="w-7 h-7 rounded-full border-2 border-white shadow-lg flex items-center justify-center text-white text-xs font-bold transition-transform group-hover:scale-125"
-        style={{ backgroundColor: color }}
+        className="w-full h-full rounded-full border-2 border-white shadow-lg flex items-center justify-center text-white font-bold hover:scale-125 transition-transform"
+        style={{
+          backgroundColor: color,
+          fontSize: Math.max(size * 0.4, 8),
+        }}
       >
         !
       </div>
+
       {hovered && (
-        <div className="absolute left-1/2 -translate-x-1/2 bottom-full mb-2 w-48 bg-slate-900 text-white rounded-lg shadow-xl p-2 text-xs pointer-events-none">
+        <div
+          className="absolute left-1/2 bottom-full mb-2 w-48 bg-slate-900 text-white rounded-lg shadow-xl p-2 text-xs pointer-events-none"
+          style={{
+            transform: `translateX(-50%) scale(${1 / scale})`,
+            transformOrigin: 'bottom center',
+          }}
+        >
           <p className="font-semibold truncate">{observation.title}</p>
           <p className="text-slate-300 mt-0.5">{STATUS_LABELS[observation.status]}</p>
-          <div className="absolute left-1/2 -translate-x-1/2 top-full" style={{ borderTop: '4px solid #0f172a', borderLeft: '4px solid transparent', borderRight: '4px solid transparent' }} />
+          <div
+            className="absolute left-1/2 -translate-x-1/2 top-full"
+            style={{ borderTop: '4px solid #0f172a', borderLeft: '4px solid transparent', borderRight: '4px solid transparent' }}
+          />
         </div>
       )}
     </div>
