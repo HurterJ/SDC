@@ -22,6 +22,7 @@ export default function PlanViewer({
 }: Props) {
   const [addingPin, setAddingPin] = useState(false)
   const [pdfWidth, setPdfWidth] = useState(900)
+  const [currentScale, setCurrentScale] = useState(1)
   const contentRef = useRef<HTMLDivElement>(null)
   const wrapperRef = useRef<HTMLDivElement>(null)
   const isPdf = /\.pdf($|\?)/i.test(planUrl)
@@ -52,8 +53,9 @@ export default function PlanViewer({
         minScale={0.2}
         maxScale={6}
         disabled={addingPin}
+        onTransformed={(_, s) => setCurrentScale(s.scale)}
       >
-        {({ zoomIn, zoomOut, resetTransform, state }) => (
+        {({ zoomIn, zoomOut, resetTransform }) => (
           <>
             {/* Contrôles zoom */}
             <div className="absolute top-4 right-4 z-20 flex flex-col gap-2">
@@ -63,14 +65,14 @@ export default function PlanViewer({
               <button onClick={() => zoomOut()} className="w-9 h-9 bg-white rounded-lg shadow flex items-center justify-center hover:bg-slate-50 transition-colors" title="Zoom -">
                 <ZoomOut className="w-4 h-4 text-slate-700" />
               </button>
-              <button onClick={() => resetTransform()} className="w-9 h-9 bg-white rounded-lg shadow flex items-center justify-center hover:bg-slate-50 transition-colors" title="R\u00e9initialiser">
+              <button onClick={() => resetTransform()} className="w-9 h-9 bg-white rounded-lg shadow flex items-center justify-center hover:bg-slate-50 transition-colors" title="Réinitialiser">
                 <Maximize2 className="w-4 h-4 text-slate-700" />
               </button>
             </div>
 
             {/* Indicateur de zoom */}
             <div className="absolute top-4 right-16 z-20 bg-white/80 backdrop-blur rounded-lg px-2 py-1 text-xs text-slate-600 font-mono">
-              {Math.round(state.scale * 100)}%
+              {Math.round(currentScale * 100)}%
             </div>
 
             {/* Bouton ajout pin */}
@@ -106,7 +108,7 @@ export default function PlanViewer({
                     }
                     error={
                       <div className="text-red-300 text-sm text-center p-8">
-                        Impossible de charger le PDF.<br />V\u00e9rifiez que le bucket Supabase est public.
+                        Impossible de charger le PDF.<br />Vérifiez que le bucket Supabase est public.
                       </div>
                     }
                   >
@@ -135,7 +137,7 @@ export default function PlanViewer({
                     <PinMarker
                       key={obs.id}
                       observation={obs}
-                      scale={state.scale}
+                      scale={currentScale}
                       onClick={() => onPinClick(obs)}
                     />
                   )
@@ -146,7 +148,7 @@ export default function PlanViewer({
         )}
       </TransformWrapper>
 
-      {/* L\u00e9gende statuts */}
+      {/* Légende statuts */}
       <div className="absolute bottom-4 left-4 z-20 bg-white/90 backdrop-blur rounded-lg shadow px-3 py-2">
         <div className="flex flex-wrap gap-2">
           {Object.entries(PIN_COLORS).map(([status, color]) => (
