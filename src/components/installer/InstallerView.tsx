@@ -1,12 +1,21 @@
 'use client'
 
 import { useState } from 'react'
+import dynamic from 'next/dynamic'
 import { createClient } from '@/lib/supabase/client'
-import { Observation, ObservationStatus } from '@/types'
+import { Observation, ObservationStatus, ObservationComment } from '@/types'
 import { STATUS_LABELS, STATUS_COLORS, STATUS_DOT_COLORS, PRIORITY_LABELS } from '@/lib/utils/status'
-import { Building2, CheckCircle, AlertTriangle, MessageSquare, Send, Loader2, ChevronDown, ChevronUp } from 'lucide-react'
+import { Building2, CheckCircle, AlertTriangle, MessageSquare, Send, Loader2, ChevronDown, ChevronUp, Map, List, X, User } from 'lucide-react'
 import { format } from 'date-fns'
 import { fr } from 'date-fns/locale'
+
+const PlanViewer = dynamic(() => import('@/components/plans/PlanViewer'), { ssr: false })
+
+interface PlanItem {
+  id: string
+  name: string
+  file_url: string
+}
 
 interface Props {
   token: {
@@ -18,16 +27,23 @@ interface Props {
     projects: { name: string; description: string | null } | null
   }
   observations: Observation[]
+  plans: PlanItem[]
 }
 
-export default function InstallerView({ token, observations: initial }: Props) {
+export default function InstallerView({ token, observations: initial, plans }: Props) {
   const [observations, setObservations] = useState(initial)
+  const [view, setView] = useState<'list' | 'plan'>('list')
+  const [selectedPlanId, setSelectedPlanId] = useState<string>(plans[0]?.id ?? '')
   const [expanded, setExpanded] = useState<string | null>(null)
+  const [selectedObs, setSelectedObs] = useState<Observation | null>(null)
   const [comments, setComments] = useState<Record<string, string>>({})
+  const [commentsList, setCommentsList] = useState<Record<string, ObservationComment[]>>({})
   const [sending, setSending] = useState<string | null>(null)
   const supabase = createClient()
 
   const canEdit = token.role === 'installateur'
+  const selectedPlan = plans.find((p) => p.id === selectedPlanId)
+  const planObs = observations.filter((o) => o.plan_id === selectedPlanId)
 
   async function updateStatus(obsId: string, status: ObservationStatus) {
     const { data } = await supabase
@@ -38,21 +54,46 @@ export default function InstallerView({ token, observations: initial }: Props) {
       .single()
     if (data) {
       setObservations(observations.map((o) => (o.id === obsId ? data as Observation : o)))
+      if (selectedObs?.id === obsId) setSelectedObs(data as Observation)
     }
+  }
+
+  async function loadComments(obsId: string) {
+    if (commentsList[obsId]) return // déjà chargés
+    const { data } = await supabase
+      .from('observation_comments')
+      .select('id, content, created_at, author_id, installer_name')
+      .eq('observation_id', obsId)
+      .order('created_at', { ascending: true })
+    if (data) setCommentsList((prev) => ({ ...prev, [obsId]: data as ObservationComment[] }))
   }
 
   async function sendComment(obsId: string) {
     const content = comments[obsId]?.trim()
     if (!content) return
     setSending(obsId)
-    await supabase.from('observation_comments').insert({
-      observation_id: obsId,
-      installer_token_id: token.id,
-      installer_name: token.name,
-      content,
-    })
+    const { data } = await supabase
+      .from('observation_comments')
+      .insert({ observation_id: obsId, installer_token_id: token.id, installer_name: token.name, content })
+      .select('id, content, created_at, author_id, installer_name')
+      .single()
+    if (data) {
+      setCommentsList((prev) => ({
+        ...prev,
+        [obsId]: [...(prev[obsId] ?? []), data as ObservationComment],
+      }))
+    }
     setComments({ ...comments, [obsId]: '' })
     setSending(null)
+  }
+
+  function handleExpand(obsId: string) {
+    if (expanded === obsId) {
+      setExpanded(null)
+    } else {
+      setExpanded(obsId)
+      loadComments(obsId)
+    }
   }
 
   const openCount = observations.filter((o) => o.status === 'ouverte').length
@@ -61,28 +102,53 @@ export default function InstallerView({ token, observations: initial }: Props) {
   return (
     <div className="min-h-screen bg-slate-50">
       {/* Header */}
-      <div className="bg-slate-900 text-white py-6 px-4">
-        <div className="max-w-2xl mx-auto">
-          <div className="flex items-center gap-3 mb-4">
-            <div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center">
-              <Building2 className="w-5 h-5 text-white" />
+      <div className="bg-slate-900 text-white py-4 px-4">
+        <div className="max-w-3xl mx-auto">
+          <div className="flex items-center gap-3 mb-2">
+            <div className="w-8 h-8 bg-blue-600 rounded-xl flex items-center justify-center">
+              <Building2 className="w-4 h-4 text-white" />
             </div>
             <div>
-              <h1 className="font-bold text-lg">SiteSuivi</h1>
-              <p className="text-slate-400 text-sm">Accès installateur</p>
+              <h1 className="font-bold">SiteSuivi</h1>
+              <p className="text-slate-400 text-xs">Accès installateur</p>
             </div>
           </div>
-          <h2 className="text-xl font-semibold">{token.projects?.name}</h2>
-          <p className="text-slate-400 text-sm mt-1">
-            Connecté en tant que <span className="text-white font-medium">{token.name}</span>
-            {token.company && ` — ${token.company}`}
+          <h2 className="text-lg font-semibold">{token.projects?.name}</h2>
+          <p className="text-slate-400 text-xs mt-0.5">
+            {token.name}{token.company && ` — ${token.company}`}
           </p>
         </div>
       </div>
 
-      {/* Stats */}
-      <div className="max-w-2xl mx-auto px-4 py-4">
-        <div className="grid grid-cols-3 gap-3 mb-6">
+      {/* Tabs */}
+      <div className="bg-white border-b border-slate-200 sticky top-0 z-10">
+        <div className="max-w-3xl mx-auto flex">
+          <button
+            onClick={() => setView('list')}
+            className={`flex-1 flex items-center justify-center gap-2 py-3 text-sm font-medium transition-colors border-b-2 ${
+              view === 'list' ? 'border-blue-600 text-blue-600' : 'border-transparent text-slate-500 hover:text-slate-700'
+            }`}
+          >
+            <List className="w-4 h-4" />
+            Réserves ({observations.length})
+          </button>
+          {plans.length > 0 && (
+            <button
+              onClick={() => setView('plan')}
+              className={`flex-1 flex items-center justify-center gap-2 py-3 text-sm font-medium transition-colors border-b-2 ${
+                view === 'plan' ? 'border-blue-600 text-blue-600' : 'border-transparent text-slate-500 hover:text-slate-700'
+              }`}
+            >
+              <Map className="w-4 h-4" />
+              Plans ({plans.length})
+            </button>
+          )}
+        </div>
+      </div>
+
+      <div className="max-w-3xl mx-auto px-4 py-4">
+        {/* Stats */}
+        <div className="grid grid-cols-3 gap-3 mb-4">
           <div className="bg-white border border-slate-200 rounded-xl p-3 text-center">
             <p className="text-xl font-bold text-slate-900">{observations.length}</p>
             <p className="text-xs text-slate-500">Total</p>
@@ -97,118 +163,224 @@ export default function InstallerView({ token, observations: initial }: Props) {
           </div>
         </div>
 
-        {/* Observations */}
-        <div className="space-y-3">
-          {observations.map((obs) => (
-            <div key={obs.id} className="bg-white border border-slate-200 rounded-xl overflow-hidden">
-              <button
-                onClick={() => setExpanded(expanded === obs.id ? null : obs.id)}
-                className="w-full text-left p-4 flex items-start gap-3"
-              >
-                <div className={`w-2.5 h-2.5 rounded-full mt-1.5 flex-shrink-0 ${STATUS_DOT_COLORS[obs.status]}`} />
-                <div className="flex-1 min-w-0">
-                  <p className="font-medium text-slate-800">{obs.title}</p>
-                  <div className="flex items-center gap-2 mt-1 flex-wrap">
-                    <span className={`text-xs px-2 py-0.5 rounded-full border ${STATUS_COLORS[obs.status]}`}>
-                      {STATUS_LABELS[obs.status]}
-                    </span>
-                    <span className="text-xs text-slate-400">{PRIORITY_LABELS[obs.priority]}</span>
+        {/* ── VUE LISTE ── */}
+        {view === 'list' && (
+          <div className="space-y-3">
+            {observations.map((obs) => (
+              <div key={obs.id} className="bg-white border border-slate-200 rounded-xl overflow-hidden">
+                <button
+                  onClick={() => handleExpand(obs.id)}
+                  className="w-full text-left p-4 flex items-start gap-3"
+                >
+                  <div className={`w-2.5 h-2.5 rounded-full mt-1.5 flex-shrink-0 ${STATUS_DOT_COLORS[obs.status]}`} />
+                  <div className="flex-1 min-w-0">
+                    <p className="font-medium text-slate-800">{obs.title}</p>
+                    <div className="flex items-center gap-2 mt-1 flex-wrap">
+                      <span className={`text-xs px-2 py-0.5 rounded-full border ${STATUS_COLORS[obs.status]}`}>
+                        {STATUS_LABELS[obs.status]}
+                      </span>
+                      <span className="text-xs text-slate-400">{PRIORITY_LABELS[obs.priority]}</span>
+                    </div>
                   </div>
-                </div>
-                {expanded === obs.id ? (
-                  <ChevronUp className="w-4 h-4 text-slate-400 flex-shrink-0" />
-                ) : (
-                  <ChevronDown className="w-4 h-4 text-slate-400 flex-shrink-0" />
-                )}
-              </button>
-
-              {expanded === obs.id && (
-                <div className="border-t border-slate-100 p-4 space-y-4">
-                  {obs.description && (
-                    <p className="text-sm text-slate-600">{obs.description}</p>
+                  {expanded === obs.id ? (
+                    <ChevronUp className="w-4 h-4 text-slate-400 flex-shrink-0" />
+                  ) : (
+                    <ChevronDown className="w-4 h-4 text-slate-400 flex-shrink-0" />
                   )}
+                </button>
 
-                  {obs.due_date && (
-                    <p className="text-xs text-orange-500">
-                      Échéance : {format(new Date(obs.due_date), 'dd MMMM yyyy', { locale: fr })}
-                    </p>
-                  )}
+                {expanded === obs.id && (
+                  <div className="border-t border-slate-100 p-4 space-y-4">
+                    {obs.description && (
+                      <p className="text-sm text-slate-600">{obs.description}</p>
+                    )}
 
-                  {/* Photos */}
-                  {obs.photos && obs.photos.length > 0 && (
-                    <div className="grid grid-cols-3 gap-2">
-                      {obs.photos.map((p) => (
-                        <img
-                          key={p.id}
-                          src={p.file_url}
-                          alt="Photo"
-                          className="w-full aspect-square object-cover rounded-lg"
+                    {obs.due_date && (
+                      <p className="text-xs text-orange-500">
+                        Échéance : {format(new Date(obs.due_date), 'dd MMMM yyyy', { locale: fr })}
+                      </p>
+                    )}
+
+                    {/* Photos */}
+                    {(obs as any).observation_photos?.length > 0 && (
+                      <div className="grid grid-cols-3 gap-2">
+                        {(obs as any).observation_photos.map((p: any) => (
+                          <img key={p.id} src={p.file_url} alt="Photo" className="w-full aspect-square object-cover rounded-lg" />
+                        ))}
+                      </div>
+                    )}
+
+                    {/* Actions */}
+                    {canEdit && (
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => updateStatus(obs.id, 'resolue')}
+                          disabled={obs.status === 'resolue' || obs.status === 'validee'}
+                          className="flex-1 flex items-center justify-center gap-1.5 py-2 bg-green-600 text-white rounded-lg text-sm hover:bg-green-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                        >
+                          <CheckCircle className="w-4 h-4" />
+                          Marquer résolue
+                        </button>
+                        <button
+                          onClick={() => updateStatus(obs.id, 'contestee')}
+                          disabled={obs.status === 'contestee'}
+                          className="flex-1 flex items-center justify-center gap-1.5 py-2 bg-yellow-500 text-white rounded-lg text-sm hover:bg-yellow-600 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                        >
+                          <AlertTriangle className="w-4 h-4" />
+                          Contester
+                        </button>
+                      </div>
+                    )}
+
+                    {/* Commentaires */}
+                    <div>
+                      <h4 className="text-xs font-medium text-slate-500 mb-2 flex items-center gap-1.5">
+                        <MessageSquare className="w-3.5 h-3.5" />
+                        Commentaires
+                      </h4>
+
+                      {(commentsList[obs.id] ?? []).length > 0 && (
+                        <div className="space-y-2 mb-3">
+                          {(commentsList[obs.id] ?? []).map((c) => (
+                            <div key={c.id} className={`rounded-lg p-2.5 ${c.author_id ? 'bg-blue-50 ml-4' : 'bg-slate-50 mr-4'}`}>
+                              <div className="flex items-center gap-1 mb-0.5">
+                                <User className="w-3 h-3 text-slate-400" />
+                                <span className="text-xs font-medium text-slate-500">
+                                  {c.installer_name ?? 'Conducteur'}
+                                </span>
+                                <span className="text-xs text-slate-300 ml-auto">
+                                  {format(new Date(c.created_at), 'dd/MM HH:mm')}
+                                </span>
+                              </div>
+                              <p className="text-sm text-slate-700">{c.content}</p>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+
+                      <div className="flex gap-2">
+                        <input
+                          value={comments[obs.id] ?? ''}
+                          onChange={(e) => setComments({ ...comments, [obs.id]: e.target.value })}
+                          placeholder="Votre commentaire..."
+                          className="flex-1 px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 text-slate-900"
                         />
-                      ))}
-                    </div>
-                  )}
-
-                  {/* Actions pour installateur */}
-                  {canEdit && (
-                    <div className="flex gap-2">
-                      <button
-                        onClick={() => updateStatus(obs.id, 'resolue')}
-                        disabled={obs.status === 'resolue' || obs.status === 'validee'}
-                        className="flex-1 flex items-center justify-center gap-1.5 py-2 bg-green-600 text-white rounded-lg text-sm hover:bg-green-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-                      >
-                        <CheckCircle className="w-4 h-4" />
-                        Marquer résolue
-                      </button>
-                      <button
-                        onClick={() => updateStatus(obs.id, 'contestee')}
-                        disabled={obs.status === 'contestee'}
-                        className="flex-1 flex items-center justify-center gap-1.5 py-2 bg-yellow-500 text-white rounded-lg text-sm hover:bg-yellow-600 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-                      >
-                        <AlertTriangle className="w-4 h-4" />
-                        Contester
-                      </button>
-                    </div>
-                  )}
-
-                  {/* Comment */}
-                  <div>
-                    <h4 className="text-xs font-medium text-slate-500 mb-2 flex items-center gap-1.5">
-                      <MessageSquare className="w-3.5 h-3.5" />
-                      Ajouter un commentaire
-                    </h4>
-                    <div className="flex gap-2">
-                      <input
-                        value={comments[obs.id] ?? ''}
-                        onChange={(e) => setComments({ ...comments, [obs.id]: e.target.value })}
-                        placeholder="Votre commentaire..."
-                        className="flex-1 px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 text-slate-900"
-                      />
-                      <button
-                        onClick={() => sendComment(obs.id)}
-                        disabled={sending === obs.id || !comments[obs.id]?.trim()}
-                        className="p-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors"
-                      >
-                        {sending === obs.id ? (
-                          <Loader2 className="w-4 h-4 animate-spin" />
-                        ) : (
-                          <Send className="w-4 h-4" />
-                        )}
-                      </button>
+                        <button
+                          onClick={() => sendComment(obs.id)}
+                          disabled={sending === obs.id || !comments[obs.id]?.trim()}
+                          className="p-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors"
+                        >
+                          {sending === obs.id ? (
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                          ) : (
+                            <Send className="w-4 h-4" />
+                          )}
+                        </button>
+                      </div>
                     </div>
                   </div>
-                </div>
-              )}
-            </div>
-          ))}
-        </div>
+                )}
+              </div>
+            ))}
 
-        {!observations.length && (
-          <div className="text-center py-16 text-slate-400">
-            <CheckCircle className="w-12 h-12 mx-auto mb-3 text-green-300" />
-            <p className="font-medium">Aucune observation en cours</p>
+            {!observations.length && (
+              <div className="text-center py-16 text-slate-400">
+                <CheckCircle className="w-12 h-12 mx-auto mb-3 text-green-300" />
+                <p className="font-medium">Aucune observation en cours</p>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ── VUE PLAN ── */}
+        {view === 'plan' && plans.length > 0 && (
+          <div className="space-y-3">
+            {/* Sélecteur de plan */}
+            {plans.length > 1 && (
+              <div className="flex gap-2 overflow-x-auto pb-1">
+                {plans.map((p) => (
+                  <button
+                    key={p.id}
+                    onClick={() => setSelectedPlanId(p.id)}
+                    className={`flex-shrink-0 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                      selectedPlanId === p.id
+                        ? 'bg-blue-600 text-white'
+                        : 'bg-white border border-slate-200 text-slate-600 hover:border-blue-300'
+                    }`}
+                  >
+                    {p.name}
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {/* Plan viewer */}
+            {selectedPlan && (
+              <div className="h-[65vh] rounded-xl overflow-hidden">
+                <PlanViewer
+                  planUrl={selectedPlan.file_url}
+                  observations={planObs}
+                  canAddPin={false}
+                  onPinClick={(obs) => setSelectedObs(obs)}
+                />
+              </div>
+            )}
+
+            <p className="text-xs text-slate-400 text-center">
+              {planObs.length} observation{planObs.length !== 1 ? 's' : ''} sur ce plan — cliquez sur un pin pour les détails
+            </p>
           </div>
         )}
       </div>
+
+      {/* Drawer observation (depuis plan) */}
+      {selectedObs && (
+        <div className="fixed inset-0 bg-black/40 z-50 flex items-end sm:items-center justify-center p-4">
+          <div className="bg-white rounded-2xl w-full max-w-lg max-h-[80vh] overflow-y-auto">
+            <div className="flex items-start justify-between p-4 border-b border-slate-100 sticky top-0 bg-white">
+              <div>
+                <h3 className="font-semibold text-slate-800">{selectedObs.title}</h3>
+                <span className={`text-xs px-2 py-0.5 rounded-full border ${STATUS_COLORS[selectedObs.status]}`}>
+                  {STATUS_LABELS[selectedObs.status]}
+                </span>
+              </div>
+              <button onClick={() => setSelectedObs(null)} className="p-1 hover:bg-slate-100 rounded-lg">
+                <X className="w-5 h-5 text-slate-500" />
+              </button>
+            </div>
+            <div className="p-4 space-y-3">
+              {selectedObs.description && (
+                <p className="text-sm text-slate-600">{selectedObs.description}</p>
+              )}
+              {selectedObs.due_date && (
+                <p className="text-xs text-orange-500">
+                  Échéance : {format(new Date(selectedObs.due_date), 'dd MMMM yyyy', { locale: fr })}
+                </p>
+              )}
+              {canEdit && (
+                <div className="flex gap-2 pt-2">
+                  <button
+                    onClick={() => { updateStatus(selectedObs.id, 'resolue'); setSelectedObs(null) }}
+                    disabled={selectedObs.status === 'resolue' || selectedObs.status === 'validee'}
+                    className="flex-1 flex items-center justify-center gap-1.5 py-2 bg-green-600 text-white rounded-lg text-sm hover:bg-green-700 disabled:opacity-40 transition-colors"
+                  >
+                    <CheckCircle className="w-4 h-4" />
+                    Marquer résolue
+                  </button>
+                  <button
+                    onClick={() => { updateStatus(selectedObs.id, 'contestee'); setSelectedObs(null) }}
+                    disabled={selectedObs.status === 'contestee'}
+                    className="flex-1 flex items-center justify-center gap-1.5 py-2 bg-yellow-500 text-white rounded-lg text-sm hover:bg-yellow-600 disabled:opacity-40 transition-colors"
+                  >
+                    <AlertTriangle className="w-4 h-4" />
+                    Contester
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

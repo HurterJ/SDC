@@ -1,37 +1,77 @@
 'use client'
 
 import { useState } from 'react'
-import { Observation, ObservationStatus } from '@/types'
+import { Observation, ObservationStatus, ObservationPriority } from '@/types'
 import { STATUS_LABELS, STATUS_COLORS, STATUS_DOT_COLORS, PRIORITY_LABELS, PRIORITY_COLORS } from '@/lib/utils/status'
 import ObservationPanel from './ObservationPanel'
-import { Search, Download, AlertCircle } from 'lucide-react'
+import ExportModal from '@/components/export/ExportModal'
+import { Search, Download, AlertCircle, ChevronDown } from 'lucide-react'
 import { format } from 'date-fns'
 import { fr } from 'date-fns/locale'
-import Link from 'next/link'
 
 interface Props {
   observations: Observation[]
   userId: string
   role: string
   projectId: string
+  projectName?: string
 }
 
 const ALL_STATUSES: ObservationStatus[] = ['ouverte', 'en_cours', 'resolue', 'contestee', 'validee']
+const ALL_PRIORITIES: ObservationPriority[] = ['critique', 'haute', 'normale', 'basse']
 
-export default function ObservationsListClient({ observations: initial, userId, role, projectId }: Props) {
+type SortKey = 'date_desc' | 'date_asc' | 'priority' | 'status'
+
+const SORT_LABELS: Record<SortKey, string> = {
+  date_desc: 'Plus récent',
+  date_asc: 'Plus ancien',
+  priority: 'Priorité',
+  status: 'Statut',
+}
+
+const PRIORITY_ORDER: Record<ObservationPriority, number> = { critique: 0, haute: 1, normale: 2, basse: 3 }
+const STATUS_ORDER: Record<ObservationStatus, number> = { ouverte: 0, contestee: 1, en_cours: 2, resolue: 3, validee: 4 }
+
+export default function ObservationsListClient({ observations: initial, userId, role, projectId, projectName = '' }: Props) {
   const [observations, setObservations] = useState(initial)
   const [selected, setSelected] = useState<Observation | null>(null)
   const [search, setSearch] = useState('')
   const [filterStatus, setFilterStatus] = useState<ObservationStatus | 'all'>('all')
+  const [filterPriority, setFilterPriority] = useState<ObservationPriority | 'all'>('all')
+  const [filterCategory, setFilterCategory] = useState<string>('all')
+  const [sortKey, setSortKey] = useState<SortKey>('date_desc')
+  const [showExport, setShowExport] = useState(false)
 
-  const filtered = observations.filter((o) => {
-    const matchSearch =
-      !search ||
-      o.title.toLowerCase().includes(search.toLowerCase()) ||
-      o.description?.toLowerCase().includes(search.toLowerCase())
-    const matchStatus = filterStatus === 'all' || o.status === filterStatus
-    return matchSearch && matchStatus
-  })
+  // Categories uniques
+  const categories = [...new Set(observations.map((o) => o.category).filter(Boolean))] as string[]
+
+  const filtered = observations
+    .filter((o) => {
+      const matchSearch =
+        !search ||
+        o.title.toLowerCase().includes(search.toLowerCase()) ||
+        o.description?.toLowerCase().includes(search.toLowerCase())
+      const matchStatus = filterStatus === 'all' || o.status === filterStatus
+      const matchPriority = filterPriority === 'all' || o.priority === filterPriority
+      const matchCategory = filterCategory === 'all' || o.category === filterCategory
+      return matchSearch && matchStatus && matchPriority && matchCategory
+    })
+    .sort((a, b) => {
+      switch (sortKey) {
+        case 'date_asc':
+          return new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+        case 'priority':
+          return PRIORITY_ORDER[a.priority] - PRIORITY_ORDER[b.priority]
+        case 'status':
+          return STATUS_ORDER[a.status] - STATUS_ORDER[b.status]
+        default: // date_desc
+          return new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+      }
+    })
+
+  // Compteurs rapides
+  const openCount = observations.filter((o) => o.status === 'ouverte' || o.status === 'en_cours').length
+  const resolvedCount = observations.filter((o) => o.status === 'resolue' || o.status === 'validee').length
 
   function handleUpdated(updated: Observation) {
     setObservations(observations.map((o) => (o.id === updated.id ? updated : o)))
@@ -46,9 +86,34 @@ export default function ObservationsListClient({ observations: initial, userId, 
   return (
     <div className="flex gap-6 h-full">
       <div className="flex-1 flex flex-col min-w-0">
+        {/* Compteurs rapides */}
+        <div className="grid grid-cols-3 gap-3 mb-4">
+          <button
+            onClick={() => setFilterStatus('all')}
+            className={`rounded-xl p-3 text-center border transition-all ${filterStatus === 'all' ? 'border-blue-300 bg-blue-50' : 'border-slate-200 bg-white hover:border-slate-300'}`}
+          >
+            <p className="text-xl font-bold text-slate-900">{observations.length}</p>
+            <p className="text-xs text-slate-500">Total</p>
+          </button>
+          <button
+            onClick={() => setFilterStatus(filterStatus === 'ouverte' ? 'all' : 'ouverte')}
+            className="rounded-xl p-3 text-center border border-red-100 bg-red-50 hover:border-red-200 transition-all"
+          >
+            <p className="text-xl font-bold text-red-700">{openCount}</p>
+            <p className="text-xs text-red-600">En cours</p>
+          </button>
+          <button
+            onClick={() => setFilterStatus(filterStatus === 'resolue' ? 'all' : 'resolue')}
+            className="rounded-xl p-3 text-center border border-green-100 bg-green-50 hover:border-green-200 transition-all"
+          >
+            <p className="text-xl font-bold text-green-700">{resolvedCount}</p>
+            <p className="text-xs text-green-600">Résolues</p>
+          </button>
+        </div>
+
         {/* Toolbar */}
-        <div className="flex flex-wrap items-center gap-3 mb-4">
-          <div className="relative flex-1 min-w-48">
+        <div className="flex flex-wrap items-center gap-2 mb-3">
+          <div className="relative flex-1 min-w-40">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
             <input
               value={search}
@@ -61,7 +126,7 @@ export default function ObservationsListClient({ observations: initial, userId, 
           <select
             value={filterStatus}
             onChange={(e) => setFilterStatus(e.target.value as ObservationStatus | 'all')}
-            className="px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 text-slate-700 bg-white"
+            className="px-3 py-2 border border-slate-200 rounded-lg text-sm text-slate-700 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
           >
             <option value="all">Tous les statuts</option>
             {ALL_STATUSES.map((s) => (
@@ -69,27 +134,52 @@ export default function ObservationsListClient({ observations: initial, userId, 
             ))}
           </select>
 
-          <Link
-            href={`/api/export?projectId=${projectId}&format=excel`}
-            className="inline-flex items-center gap-2 px-3 py-2 border border-slate-200 rounded-lg text-sm text-slate-600 hover:bg-slate-50 transition-colors"
+          <select
+            value={filterPriority}
+            onChange={(e) => setFilterPriority(e.target.value as ObservationPriority | 'all')}
+            className="px-3 py-2 border border-slate-200 rounded-lg text-sm text-slate-700 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
           >
-            <Download className="w-4 h-4" />
-            Excel
-          </Link>
+            <option value="all">Toutes priorités</option>
+            {ALL_PRIORITIES.map((p) => (
+              <option key={p} value={p}>{PRIORITY_LABELS[p]}</option>
+            ))}
+          </select>
 
-          <Link
-            href={`/api/export?projectId=${projectId}&format=pdf`}
+          {categories.length > 0 && (
+            <select
+              value={filterCategory}
+              onChange={(e) => setFilterCategory(e.target.value)}
+              className="px-3 py-2 border border-slate-200 rounded-lg text-sm text-slate-700 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="all">Toutes catégories</option>
+              {categories.map((c) => (
+                <option key={c} value={c}>{c}</option>
+              ))}
+            </select>
+          )}
+
+          <select
+            value={sortKey}
+            onChange={(e) => setSortKey(e.target.value as SortKey)}
+            className="px-3 py-2 border border-slate-200 rounded-lg text-sm text-slate-700 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+          >
+            {(Object.keys(SORT_LABELS) as SortKey[]).map((k) => (
+              <option key={k} value={k}>{SORT_LABELS[k]}</option>
+            ))}
+          </select>
+
+          <button
+            onClick={() => setShowExport(true)}
             className="inline-flex items-center gap-2 px-3 py-2 bg-slate-800 text-white rounded-lg text-sm hover:bg-slate-700 transition-colors"
           >
             <Download className="w-4 h-4" />
-            PDF
-          </Link>
+            Exporter
+          </button>
         </div>
 
         {/* Count */}
         <p className="text-sm text-slate-500 mb-3">
-          {filtered.length} observation{filtered.length !== 1 ? 's' : ''}
-          {filterStatus !== 'all' && ` (${STATUS_LABELS[filterStatus]})`}
+          {filtered.length} réserve{filtered.length !== 1 ? 's' : ''}
         </p>
 
         {/* List */}
@@ -109,9 +199,7 @@ export default function ObservationsListClient({ observations: initial, userId, 
                 }`}
               >
                 <div className="flex items-start gap-3">
-                  <div
-                    className={`w-2.5 h-2.5 rounded-full mt-1.5 flex-shrink-0 ${STATUS_DOT_COLORS[obs.status]}`}
-                  />
+                  <div className={`w-2.5 h-2.5 rounded-full mt-1.5 flex-shrink-0 ${STATUS_DOT_COLORS[obs.status]}`} />
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
                       <p className="font-medium text-slate-800 truncate">{obs.title}</p>
@@ -158,6 +246,15 @@ export default function ObservationsListClient({ observations: initial, userId, 
             onDeleted={handleDeleted}
           />
         </div>
+      )}
+
+      {/* Export modal */}
+      {showExport && (
+        <ExportModal
+          projectId={projectId}
+          projectName={projectName}
+          onClose={() => setShowExport(false)}
+        />
       )}
     </div>
   )

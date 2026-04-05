@@ -1,11 +1,11 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { Observation, ObservationStatus } from '@/types'
+import { Observation, ObservationStatus, ObservationComment } from '@/types'
 import { STATUS_LABELS, STATUS_COLORS, PRIORITY_LABELS, PRIORITY_COLORS } from '@/lib/utils/status'
 import PhotoUpload from './PhotoUpload'
-import { X, Trash2, Calendar, Tag, Loader2, MessageSquare, Send } from 'lucide-react'
+import { X, Trash2, Calendar, Tag, Loader2, MessageSquare, Send, User } from 'lucide-react'
 import { format } from 'date-fns'
 import { fr } from 'date-fns/locale'
 
@@ -25,11 +25,26 @@ export default function ObservationPanel({ observation, userId, role, onClose, o
   const [deleting, setDeleting] = useState(false)
   const [comment, setComment] = useState('')
   const [sendingComment, setSendingComment] = useState(false)
-  const [comments, setComments] = useState<Array<{ id: string; content: string; created_at: string; author_id: string | null }>>([])
+  const [comments, setComments] = useState<ObservationComment[]>([])
+  const [loadingComments, setLoadingComments] = useState(true)
   const supabase = createClient()
 
   const canEdit = role === 'conducteur'
   const canResolve = role === 'conducteur' || role === 'installateur'
+
+  // Charger les commentaires depuis la DB à chaque ouverture
+  useEffect(() => {
+    setLoadingComments(true)
+    supabase
+      .from('observation_comments')
+      .select('id, content, created_at, author_id, installer_token_id, installer_name')
+      .eq('observation_id', observation.id)
+      .order('created_at', { ascending: true })
+      .then(({ data }) => {
+        setComments((data as ObservationComment[]) ?? [])
+        setLoadingComments(false)
+      })
+  }, [observation.id])
 
   async function updateStatus(status: ObservationStatus) {
     setUpdating(true)
@@ -53,17 +68,17 @@ export default function ObservationPanel({ observation, userId, role, onClose, o
     setDeleting(false)
   }
 
-  async function sendComment(e: React.FormEvent) {
+  async function sendCommentHandler(e: React.FormEvent) {
     e.preventDefault()
     if (!comment.trim()) return
     setSendingComment(true)
     const { data } = await supabase
       .from('observation_comments')
       .insert({ observation_id: observation.id, author_id: userId, content: comment })
-      .select()
+      .select('id, content, created_at, author_id, installer_token_id, installer_name')
       .single()
     if (data) {
-      setComments([...comments, data])
+      setComments((prev) => [...prev, data as ObservationComment])
       setComment('')
     }
     setSendingComment(false)
@@ -125,7 +140,6 @@ export default function ObservationPanel({ observation, userId, role, onClose, o
             <div className="flex flex-wrap gap-2">
               {STATUSES.filter((s) => {
                 if (!canEdit && s === 'validee') return false
-                if (!canEdit && s === 'contestee') return true
                 return true
               }).map((s) => (
                 <button
@@ -158,25 +172,40 @@ export default function ObservationPanel({ observation, userId, role, onClose, o
         <div className="p-4">
           <h4 className="text-xs font-medium text-slate-500 uppercase tracking-wide mb-3 flex items-center gap-1.5">
             <MessageSquare className="w-3.5 h-3.5" />
-            Commentaires
+            Commentaires {!loadingComments && comments.length > 0 && `(${comments.length})`}
           </h4>
 
-          {!comments.length && (
+          {loadingComments ? (
+            <div className="flex justify-center py-4">
+              <Loader2 className="w-4 h-4 animate-spin text-slate-400" />
+            </div>
+          ) : comments.length === 0 ? (
             <p className="text-sm text-slate-400 text-center py-4">Aucun commentaire</p>
+          ) : (
+            <div className="space-y-2 mb-4">
+              {comments.map((c) => {
+                const isMine = c.author_id === userId
+                const authorName = isMine ? 'Vous' : (c.installer_name ?? 'Installateur')
+                return (
+                  <div
+                    key={c.id}
+                    className={`rounded-lg p-3 ${isMine ? 'bg-blue-50 ml-4' : 'bg-slate-50 mr-4'}`}
+                  >
+                    <div className="flex items-center gap-1.5 mb-1">
+                      <User className="w-3 h-3 text-slate-400" />
+                      <span className="text-xs font-medium text-slate-500">{authorName}</span>
+                      <span className="text-xs text-slate-300 ml-auto">
+                        {format(new Date(c.created_at), 'dd/MM HH:mm')}
+                      </span>
+                    </div>
+                    <p className="text-sm text-slate-700">{c.content}</p>
+                  </div>
+                )
+              })}
+            </div>
           )}
 
-          <div className="space-y-3 mb-4">
-            {comments.map((c) => (
-              <div key={c.id} className="bg-slate-50 rounded-lg p-3">
-                <p className="text-sm text-slate-700">{c.content}</p>
-                <p className="text-xs text-slate-400 mt-1">
-                  {format(new Date(c.created_at), 'dd/MM/yyyy HH:mm')}
-                </p>
-              </div>
-            ))}
-          </div>
-
-          <form onSubmit={sendComment} className="flex gap-2">
+          <form onSubmit={sendCommentHandler} className="flex gap-2 mt-3">
             <input
               value={comment}
               onChange={(e) => setComment(e.target.value)}

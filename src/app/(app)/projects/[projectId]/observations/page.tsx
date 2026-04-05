@@ -45,6 +45,7 @@ export default async function ObservationsPage({ params }: Props) {
           userId={user.id}
           role={role}
           projectId={params.projectId}
+          projectName={project.name}
         />
       </main>
     </div>

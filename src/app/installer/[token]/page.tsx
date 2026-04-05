@@ -9,7 +9,6 @@ interface Props {
 export default async function InstallerPage({ params }: Props) {
   const supabase = createClient()
 
-  // Validate token
   const { data: tokenData } = await supabase
     .from('installer_tokens')
     .select('*, projects(id, name, description)')
@@ -19,7 +18,6 @@ export default async function InstallerPage({ params }: Props) {
 
   if (!tokenData) notFound()
 
-  // Check expiry
   if (tokenData.expires_at && new Date(tokenData.expires_at) < new Date()) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-50">
@@ -31,17 +29,24 @@ export default async function InstallerPage({ params }: Props) {
     )
   }
 
-  // Fetch observations
-  const { data: observations } = await supabase
-    .from('observations')
-    .select('*, observation_photos(id, file_url)')
-    .eq('project_id', tokenData.project_id)
-    .order('created_at', { ascending: false })
+  const [{ data: observations }, { data: plans }] = await Promise.all([
+    supabase
+      .from('observations')
+      .select('*, observation_photos(id, file_url)')
+      .eq('project_id', tokenData.project_id)
+      .order('created_at', { ascending: false }),
+    supabase
+      .from('plans')
+      .select('id, name, file_url')
+      .eq('project_id', tokenData.project_id)
+      .order('created_at', { ascending: true }),
+  ])
 
   return (
     <InstallerView
       token={tokenData}
       observations={observations ?? []}
+      plans={plans ?? []}
     />
   )
 }
