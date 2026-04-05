@@ -4,7 +4,7 @@ import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import Header from '@/components/layout/Header'
-import { FolderOpen, AlertCircle, CheckCircle2, Clock, Plus, ChevronRight } from 'lucide-react'
+import { FolderOpen, AlertCircle, CheckCircle2, Plus, ChevronRight } from 'lucide-react'
 
 export default async function DashboardPage() {
   const supabase = createClient()

@@ -17,31 +17,34 @@ interface Props {
   onMapClick?: (x: number, y: number) => void
 }
 
-export default function PlanViewer({
-  planUrl, observations, canAddPin, onPinClick, onMapClick,
-}: Props) {
+export default function PlanViewer({ planUrl, observations, canAddPin, onPinClick, onMapClick }: Props) {
   const [pdfWidth, setPdfWidth] = useState(900)
   const [currentScale, setCurrentScale] = useState(1)
   const contentRef = useRef<HTMLDivElement>(null)
   const wrapperRef = useRef<HTMLDivElement>(null)
   const isPdf = /\.pdf($|\?)/i.test(planUrl)
 
+  // ResizeObserver : recalcule la largeur PDF quand le conteneur change de taille
   useEffect(() => {
     if (!isPdf || !wrapperRef.current) return
-    const w = wrapperRef.current.clientWidth
-    if (w > 0) setPdfWidth(Math.min(w - 32, 1400))
+    const observer = new ResizeObserver(([entry]) => {
+      const w = entry.contentRect.width
+      if (w > 0) setPdfWidth(Math.min(w - 32, 1400))
+    })
+    observer.observe(wrapperRef.current)
+    return () => observer.disconnect()
   }, [isPdf])
 
-  // Double-clic sur le plan → créer une observation directement
   const handleDoubleClick = useCallback(
     (e: React.MouseEvent<HTMLDivElement>) => {
       if (!canAddPin || !onMapClick) return
       e.preventDefault()
       const rect = contentRef.current?.getBoundingClientRect()
       if (!rect) return
-      const x = ((e.clientX - rect.left) / rect.width) * 100
-      const y = ((e.clientY - rect.top) / rect.height) * 100
-      onMapClick(x, y)
+      onMapClick(
+        ((e.clientX - rect.left) / rect.width) * 100,
+        ((e.clientY - rect.top) / rect.height) * 100
+      )
     },
     [canAddPin, onMapClick]
   )
@@ -49,9 +52,7 @@ export default function PlanViewer({
   return (
     <div ref={wrapperRef} className="relative w-full h-full bg-slate-800 rounded-xl overflow-hidden">
       <TransformWrapper
-        initialScale={1}
-        minScale={0.2}
-        maxScale={6}
+        initialScale={1} minScale={0.2} maxScale={6}
         doubleClick={{ disabled: true }}
         onTransformed={(_, s) => setCurrentScale(s.scale)}
       >
@@ -59,18 +60,19 @@ export default function PlanViewer({
           <>
             {/* Contrôles zoom */}
             <div className="absolute top-4 right-4 z-20 flex flex-col gap-2">
-              <button onClick={() => zoomIn()} className="w-9 h-9 bg-white rounded-lg shadow flex items-center justify-center hover:bg-slate-50 transition-colors" title="Zoom +">
-                <ZoomIn className="w-4 h-4 text-slate-700" />
-              </button>
-              <button onClick={() => zoomOut()} className="w-9 h-9 bg-white rounded-lg shadow flex items-center justify-center hover:bg-slate-50 transition-colors" title="Zoom -">
-                <ZoomOut className="w-4 h-4 text-slate-700" />
-              </button>
-              <button onClick={() => resetTransform()} className="w-9 h-9 bg-white rounded-lg shadow flex items-center justify-center hover:bg-slate-50 transition-colors" title="Réinitialiser">
-                <Maximize2 className="w-4 h-4 text-slate-700" />
-              </button>
+              {([
+                { fn: zoomIn, Icon: ZoomIn, title: 'Zoom +' },
+                { fn: zoomOut, Icon: ZoomOut, title: 'Zoom -' },
+                { fn: resetTransform, Icon: Maximize2, title: 'Réinitialiser' },
+              ] as const).map(({ fn, Icon, title }) => (
+                <button key={title} onClick={() => fn()} title={title}
+                  className="w-9 h-9 bg-white rounded-lg shadow flex items-center justify-center hover:bg-slate-50 transition-colors">
+                  <Icon className="w-4 h-4 text-slate-700" />
+                </button>
+              ))}
             </div>
 
-            {/* Indicateur de zoom */}
+            {/* Indicateur zoom */}
             <div className="absolute top-4 right-16 z-20 bg-white/80 backdrop-blur rounded-lg px-2 py-1 text-xs text-slate-600 font-mono">
               {Math.round(currentScale * 100)}%
             </div>
@@ -116,24 +118,17 @@ export default function PlanViewer({
                     />
                   </Document>
                 ) : (
-                  <img
-                    src={planUrl}
-                    alt="Plan"
+                  <img src={planUrl} alt="Plan"
                     className="max-w-full max-h-full object-contain select-none shadow-2xl"
-                    draggable={false}
-                  />
+                    draggable={false} />
                 )}
 
-                {/* Pins — taille visuelle constante grâce à scale(1/zoom) */}
+                {/* Pins — taille visuelle constante via scale(1/zoom) */}
                 {observations.map((obs) => {
                   if (obs.plan_x == null || obs.plan_y == null) return null
                   return (
-                    <PinMarker
-                      key={obs.id}
-                      observation={obs}
-                      scale={currentScale}
-                      onClick={() => onPinClick(obs)}
-                    />
+                    <PinMarker key={obs.id} observation={obs} scale={currentScale}
+                      onClick={() => onPinClick(obs)} />
                   )
                 })}
               </div>
@@ -161,15 +156,10 @@ export default function PlanViewer({
 
 const BASE_SIZE = 28
 
-function PinMarker({
-  observation, scale, onClick,
-}: {
-  observation: Observation
-  scale: number
-  onClick: () => void
+function PinMarker({ observation, scale, onClick }: {
+  observation: Observation; scale: number; onClick: () => void
 }) {
   const [hovered, setHovered] = useState(false)
-  const color = PIN_COLORS[observation.status]
 
   return (
     <div
@@ -177,8 +167,7 @@ function PinMarker({
       style={{
         left: `${observation.plan_x}%`,
         top: `${observation.plan_y}%`,
-        width: BASE_SIZE,
-        height: BASE_SIZE,
+        width: BASE_SIZE, height: BASE_SIZE,
         transform: `translate(-50%, -50%) scale(${1 / scale})`,
         transformOrigin: 'center center',
       }}
@@ -189,25 +178,18 @@ function PinMarker({
     >
       <div
         className="w-full h-full rounded-full border-2 border-white shadow-lg flex items-center justify-center text-white font-bold hover:scale-125 transition-transform text-xs"
-        style={{ backgroundColor: color }}
+        style={{ backgroundColor: PIN_COLORS[observation.status] }}
       >
         !
       </div>
 
       {hovered && (
-        <div
-          className="absolute left-1/2 bottom-full mb-2 w-48 bg-slate-900 text-white rounded-lg shadow-xl p-2 text-xs pointer-events-none"
-          style={{
-            transform: 'translateX(-50%)',
-            transformOrigin: 'bottom center',
-          }}
-        >
+        <div className="absolute left-1/2 bottom-full mb-2 w-48 bg-slate-900 text-white rounded-lg shadow-xl p-2 text-xs pointer-events-none"
+          style={{ transform: 'translateX(-50%)', transformOrigin: 'bottom center' }}>
           <p className="font-semibold truncate">{observation.title}</p>
           <p className="text-slate-300 mt-0.5">{STATUS_LABELS[observation.status]}</p>
-          <div
-            className="absolute left-1/2 -translate-x-1/2 top-full"
-            style={{ borderTop: '4px solid #0f172a', borderLeft: '4px solid transparent', borderRight: '4px solid transparent' }}
-          />
+          <div className="absolute left-1/2 -translate-x-1/2 top-full"
+            style={{ borderTop: '4px solid #0f172a', borderLeft: '4px solid transparent', borderRight: '4px solid transparent' }} />
         </div>
       )}
     </div>
