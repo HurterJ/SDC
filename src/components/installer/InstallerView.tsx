@@ -2,14 +2,13 @@
 
 import { useState, useRef } from 'react'
 import dynamic from 'next/dynamic'
-import { createClient } from '@/lib/supabase/client'
+import { createClient } from '@/lib/supabase/client' // lecture commentaires uniquement
 import { Observation, ObservationStatus, ObservationComment } from '@/types'
 import { STATUS_LABELS, STATUS_COLORS, STATUS_DOT_COLORS, PRIORITY_LABELS } from '@/lib/utils/status'
 import { compressImage, isMobileDevice } from '@/lib/utils/image'
 import { Building2, CheckCircle, AlertTriangle, MessageSquare, Send, Loader2, ChevronDown, ChevronUp, Map, List, X, User, Camera, ImageIcon } from 'lucide-react'
 import { format } from 'date-fns'
 import { fr } from 'date-fns/locale'
-import { v4 as uuidv4 } from 'uuid'
 
 const PlanViewer = dynamic(() => import('@/components/plans/PlanViewer'), { ssr: false })
 
@@ -53,13 +52,13 @@ export default function InstallerView({ token, observations: initial, plans }: P
   const planObs = observations.filter((o) => o.plan_id === selectedPlanId)
 
   async function updateStatus(obsId: string, status: ObservationStatus) {
-    const { data } = await supabase
-      .from('observations')
-      .update({ status })
-      .eq('id', obsId)
-      .select()
-      .single()
-    if (data) {
+    const res = await fetch('/api/installer/status', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ observation_id: obsId, installer_token_id: token.id, status }),
+    })
+    if (res.ok) {
+      const data = await res.json()
       setObservations(observations.map((o) => (o.id === obsId ? data as Observation : o)))
       if (selectedObs?.id === obsId) setSelectedObs(data as Observation)
     }
@@ -95,30 +94,39 @@ export default function InstallerView({ token, observations: initial, plans }: P
     setSending(obsId)
 
     let photoUrl: string | undefined
+
+    // Upload photo via API route (contourne RLS)
     if (photo) {
       const compressed = await compressImage(photo)
-      const path = `${obsId}/${uuidv4()}.webp`
-      const { error: upErr } = await supabase.storage.from('photos').upload(path, compressed, { contentType: 'image/webp' })
-      if (!upErr) {
-        const { data: urlData } = supabase.storage.from('photos').getPublicUrl(path)
-        photoUrl = urlData.publicUrl
-        // Also insert into observation_photos so engineer sees it
-        await supabase.from('observation_photos').insert({ observation_id: obsId, file_url: photoUrl, file_path: path })
+      const fd = new FormData()
+      fd.append('file', compressed)
+      fd.append('observation_id', obsId)
+      fd.append('installer_token_id', token.id)
+      const photoRes = await fetch('/api/installer/photo', { method: 'POST', body: fd })
+      if (photoRes.ok) {
+        const { file_url } = await photoRes.json()
+        photoUrl = file_url
       }
     }
 
-    if (content || photoUrl) {
-      const { data } = await supabase
-        .from('observation_comments')
-        .insert({ observation_id: obsId, installer_token_id: token.id, installer_name: token.name, content: content || '', photo_url: photoUrl })
-        .select('id, content, created_at, author_id, installer_name, photo_url')
-        .single()
-      if (data) {
-        setCommentsList((prev) => ({
-          ...prev,
-          [obsId]: [...(prev[obsId] ?? []), data as ObservationComment],
-        }))
-      }
+    // Envoyer le commentaire via API route
+    const commentRes = await fetch('/api/installer/comment', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        observation_id: obsId,
+        installer_token_id: token.id,
+        installer_name: token.name,
+        content: content || '',
+        photo_url: photoUrl,
+      }),
+    })
+    if (commentRes.ok) {
+      const data = await commentRes.json()
+      setCommentsList((prev) => ({
+        ...prev,
+        [obsId]: [...(prev[obsId] ?? []), data as ObservationComment],
+      }))
     }
 
     setComments({ ...comments, [obsId]: '' })
