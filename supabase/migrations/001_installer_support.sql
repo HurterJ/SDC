@@ -9,27 +9,30 @@ ALTER TABLE public.observation_photos
 ALTER TABLE public.observation_comments
   ADD COLUMN IF NOT EXISTS photo_url TEXT;
 
--- 3. Permettre la lecture anonyme des installer_tokens (pour validation token côté serveur)
---    (déjà géré via service role dans les API routes, pas besoin de policy anon)
+-- 3. Policies lecture anonyme pour la page installateur
+--    (supprime d'abord si elles existent, puis recrée)
 
--- 4. Permettre la lecture anonyme des observations pour les installateurs
---    (la page /installer/[token] lit les données via le server client)
-CREATE POLICY IF NOT EXISTS "Lecture anon via token installateur"
+DROP POLICY IF EXISTS "Lecture anon via token installateur" ON public.observations;
+CREATE POLICY "Lecture anon via token installateur"
   ON public.observations FOR SELECT
   TO anon USING (true);
 
-CREATE POLICY IF NOT EXISTS "Lecture anon plans via token installateur"
+DROP POLICY IF EXISTS "Lecture anon plans via token installateur" ON public.plans;
+CREATE POLICY "Lecture anon plans via token installateur"
   ON public.plans FOR SELECT
   TO anon USING (true);
 
-CREATE POLICY IF NOT EXISTS "Lecture anon photos"
+DROP POLICY IF EXISTS "Lecture anon photos" ON public.observation_photos;
+CREATE POLICY "Lecture anon photos"
   ON public.observation_photos FOR SELECT
   TO anon USING (true);
 
-CREATE POLICY IF NOT EXISTS "Lecture anon commentaires"
+DROP POLICY IF EXISTS "Lecture anon commentaires" ON public.observation_comments;
+CREATE POLICY "Lecture anon commentaires"
   ON public.observation_comments FOR SELECT
   TO anon USING (true);
 
-CREATE POLICY IF NOT EXISTS "Lecture anon installer_tokens"
+DROP POLICY IF EXISTS "Lecture anon installer_tokens" ON public.installer_tokens;
+CREATE POLICY "Lecture anon installer_tokens"
   ON public.installer_tokens FOR SELECT
   TO anon USING (true);
