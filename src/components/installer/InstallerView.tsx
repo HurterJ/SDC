@@ -42,6 +42,7 @@ export default function InstallerView({ token, observations: initial, plans }: P
   const [sending, setSending] = useState<string | null>(null)
   const [attachedPhoto, setAttachedPhoto] = useState<Record<string, File | null>>({})
   const [photoPreview, setPhotoPreview] = useState<Record<string, string | null>>({})
+  const [lightbox, setLightbox] = useState<string | null>(null)
   const photoInputRef = useRef<HTMLInputElement>(null)
   const [activePhotoObs, setActivePhotoObs] = useState<string | null>(null)
   const supabase = createClient()
@@ -93,45 +94,46 @@ export default function InstallerView({ token, observations: initial, plans }: P
     if (!content && !photo) return
     setSending(obsId)
 
-    let photoUrl: string | undefined
+    try {
+      let photoUrl: string | undefined
 
-    // Upload photo via API route (contourne RLS)
-    if (photo) {
-      const compressed = await compressImage(photo)
-      const fd = new FormData()
-      fd.append('file', compressed)
-      fd.append('observation_id', obsId)
-      fd.append('installer_token_id', token.id)
-      const photoRes = await fetch('/api/installer/photo', { method: 'POST', body: fd })
-      if (photoRes.ok) {
-        const { file_url } = await photoRes.json()
-        photoUrl = file_url
+      if (photo) {
+        const compressed = await compressImage(photo)
+        const fd = new FormData()
+        fd.append('file', compressed)
+        fd.append('observation_id', obsId)
+        fd.append('installer_token_id', token.id)
+        const photoRes = await fetch('/api/installer/photo', { method: 'POST', body: fd })
+        if (photoRes.ok) {
+          const { file_url } = await photoRes.json()
+          photoUrl = file_url
+        }
       }
-    }
 
-    // Envoyer le commentaire via API route
-    const commentRes = await fetch('/api/installer/comment', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        observation_id: obsId,
-        installer_token_id: token.id,
-        installer_name: token.name,
-        content: content || '',
-        photo_url: photoUrl,
-      }),
-    })
-    if (commentRes.ok) {
-      const data = await commentRes.json()
-      setCommentsList((prev) => ({
-        ...prev,
-        [obsId]: [...(prev[obsId] ?? []), data as ObservationComment],
-      }))
-    }
+      const commentRes = await fetch('/api/installer/comment', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          observation_id: obsId,
+          installer_token_id: token.id,
+          installer_name: token.name,
+          content: content || '',
+          photo_url: photoUrl,
+        }),
+      })
+      if (commentRes.ok) {
+        const data = await commentRes.json()
+        setCommentsList((prev) => ({
+          ...prev,
+          [obsId]: [...(prev[obsId] ?? []), data as ObservationComment],
+        }))
+      }
 
-    setComments({ ...comments, [obsId]: '' })
-    removeAttachedPhoto(obsId)
-    setSending(null)
+      setComments((prev) => ({ ...prev, [obsId]: '' }))
+      removeAttachedPhoto(obsId)
+    } finally {
+      setSending(null)
+    }
   }
 
   function handleExpand(obsId: string) {
@@ -248,12 +250,21 @@ export default function InstallerView({ token, observations: initial, plans }: P
                       </p>
                     )}
 
-                    {/* Photos */}
+                    {/* Photos de l'observation */}
                     {(obs as any).observation_photos?.length > 0 && (
-                      <div className="grid grid-cols-3 gap-2">
-                        {(obs as any).observation_photos.map((p: any) => (
-                          <img key={p.id} src={p.file_url} alt="Photo" className="w-full aspect-square object-cover rounded-lg" />
-                        ))}
+                      <div>
+                        <p className="text-xs font-medium text-slate-500 mb-2">Photos</p>
+                        <div className="grid grid-cols-3 gap-2">
+                          {(obs as any).observation_photos.map((p: any) => (
+                            <button
+                              key={p.id}
+                              onClick={() => setLightbox(p.file_url)}
+                              className="aspect-square rounded-lg overflow-hidden bg-slate-100 hover:opacity-90 transition-opacity"
+                            >
+                              <img src={p.file_url} alt="Photo" className="w-full h-full object-cover" />
+                            </button>
+                          ))}
+                        </div>
                       </div>
                     )}
 
@@ -415,6 +426,16 @@ export default function InstallerView({ token, observations: initial, plans }: P
           </div>
         )}
       </div>
+
+      {/* Lightbox photos */}
+      {lightbox && (
+        <div className="fixed inset-0 bg-black/85 z-[100] flex items-center justify-center p-4" onClick={() => setLightbox(null)}>
+          <img src={lightbox} alt="Photo" className="max-w-full max-h-full object-contain rounded-lg" />
+          <button onClick={() => setLightbox(null)} className="absolute top-4 right-4 p-2 bg-white/10 rounded-full hover:bg-white/20 transition-colors">
+            <X className="w-6 h-6 text-white" />
+          </button>
+        </div>
+      )}
 
       {/* Drawer observation (depuis plan) */}
       {selectedObs && (

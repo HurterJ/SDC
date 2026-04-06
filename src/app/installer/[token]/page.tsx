@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { notFound } from 'next/navigation'
 import InstallerView from '@/components/installer/InstallerView'
 
@@ -23,7 +24,7 @@ export default async function InstallerPage({ params }: Props) {
       <div className="min-h-screen flex items-center justify-center bg-slate-50">
         <div className="text-center">
           <h1 className="text-2xl font-bold text-slate-800 mb-2">Lien expiré</h1>
-          <p className="text-slate-500">Ce lien d'accès a expiré. Contactez le conducteur de travaux.</p>
+          <p className="text-slate-500">Ce lien d&apos;accès a expiré. Contactez le conducteur de travaux.</p>
         </div>
       </div>
     )
@@ -32,7 +33,7 @@ export default async function InstallerPage({ params }: Props) {
   const [{ data: observations }, { data: plans }] = await Promise.all([
     supabase
       .from('observations')
-      .select('*, observation_photos(id, file_url)')
+      .select('*, observation_photos(id, file_url, file_path)')
       .eq('project_id', tokenData.project_id)
       .order('created_at', { ascending: false }),
     supabase
@@ -42,10 +43,26 @@ export default async function InstallerPage({ params }: Props) {
       .order('created_at', { ascending: true }),
   ])
 
+  // Générer des URLs signées pour toutes les photos (bucket privé)
+  const admin = createAdminClient()
+  const obsWithSignedUrls = await Promise.all(
+    (observations ?? []).map(async (obs: any) => {
+      if (!obs.observation_photos?.length) return obs
+      const photos = await Promise.all(
+        obs.observation_photos.map(async (p: any) => {
+          if (!p.file_path) return p
+          const { data } = await admin.storage.from('photos').createSignedUrl(p.file_path, 3600)
+          return { ...p, file_url: data?.signedUrl ?? p.file_url }
+        })
+      )
+      return { ...obs, observation_photos: photos }
+    })
+  )
+
   return (
     <InstallerView
       token={tokenData}
-      observations={observations ?? []}
+      observations={obsWithSignedUrls}
       plans={plans ?? []}
     />
   )
