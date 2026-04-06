@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { STATUS_LABELS, PRIORITY_LABELS } from '@/lib/utils/status'
 
 export async function GET(request: NextRequest) {
@@ -178,6 +179,21 @@ function priorityBadgeStyle(priority: string, colorMode: boolean): string {
   return map[priority] ?? 'background:#f1f5f9;color:#475569'
 }
 
+/** Télécharge une image depuis le storage Supabase et la retourne en data URL base64 */
+async function toBase64DataUrl(filePath: string): Promise<string | null> {
+  try {
+    const admin = createAdminClient()
+    const { data, error } = await admin.storage.from('photos').download(filePath)
+    if (error || !data) return null
+    const arrayBuffer = await data.arrayBuffer()
+    const base64 = Buffer.from(arrayBuffer).toString('base64')
+    const mime = data.type || 'image/jpeg'
+    return `data:${mime};base64,${base64}`
+  } catch {
+    return null
+  }
+}
+
 async function exportPdf(project: any, observations: any[], opts: PdfOptions) {
   const date = new Date().toLocaleDateString('fr-FR', {
     weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',
@@ -191,22 +207,31 @@ async function exportPdf(project: any, observations: any[], opts: PdfOptions) {
     validee: observations.filter((o) => o.status === 'validee').length,
   }
 
-  const obsRows = observations.map((obs, i) => {
-    const photos = opts.showPhotos && obs.observation_photos?.length > 0
-      ? `<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px;">
-          ${obs.observation_photos.slice(0, 4).map((p: any) =>
-            `<img src="${p.file_url}" style="width:80px;height:80px;object-fit:cover;border-radius:4px;" />`
-          ).join('')}
-        </div>`
-      : ''
+  // Pré-charger toutes les images en base64 (parallèle)
+  const obsWithPhotos = await Promise.all(
+    observations.map(async (obs, i) => {
+      let photoHtml = ''
+      if (opts.showPhotos && obs.observation_photos?.length > 0) {
+        const dataUrls = await Promise.all(
+          obs.observation_photos.slice(0, 4).map((p: any) => toBase64DataUrl(p.file_path))
+        )
+        const imgs = dataUrls
+          .filter(Boolean)
+          .map((src) => `<img src="${src}" style="width:80px;height:80px;object-fit:cover;border-radius:4px;" />`)
+          .join('')
+        if (imgs) photoHtml = `<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px;">${imgs}</div>`
+      }
+      return { obs, i, photoHtml }
+    })
+  )
 
-    return `
+  const obsRows = obsWithPhotos.map(({ obs, i, photoHtml }) => `
       <tr>
         <td style="text-align:center;padding:8px 6px;border-bottom:1px solid #e2e8f0;font-size:10px;color:#64748b;">${i + 1}</td>
         <td style="padding:8px 10px;border-bottom:1px solid #e2e8f0;max-width:260px;">
           <strong style="font-size:11px;color:#0f172a;">${obs.title}</strong>
           ${obs.description ? `<br><span style="font-size:9px;color:#64748b;">${obs.description.substring(0, 120)}${obs.description.length > 120 ? '…' : ''}</span>` : ''}
-          ${photos}
+          ${photoHtml}
         </td>
         <td style="padding:8px 6px;border-bottom:1px solid #e2e8f0;">
           <span style="display:inline-block;padding:2px 8px;border-radius:12px;font-size:9px;font-weight:600;${statusBadgeStyle(obs.status, opts.colorMode)}">
@@ -222,7 +247,7 @@ async function exportPdf(project: any, observations: any[], opts: PdfOptions) {
         <td style="padding:8px 6px;border-bottom:1px solid #e2e8f0;font-size:10px;color:#64748b;">${obs.created_at ? new Date(obs.created_at).toLocaleDateString('fr-FR') : '—'}</td>
         <td style="padding:8px 6px;border-bottom:1px solid #e2e8f0;font-size:10px;color:${obs.due_date ? '#ea580c' : '#94a3b8'};">${obs.due_date ? new Date(obs.due_date).toLocaleDateString('fr-FR') : '—'}</td>
       </tr>`
-  }).join('')
+  ).join('')
 
   const html = `<!DOCTYPE html>
 <html lang="fr">
@@ -296,10 +321,8 @@ async function exportPdf(project: any, observations: any[], opts: PdfOptions) {
   </div>
 
   <script>
-    // Auto-print après chargement des images
-    window.addEventListener('load', function() {
-      setTimeout(function() { window.print(); }, 800);
-    });
+    // Images déjà en base64 — impression immédiate
+    window.addEventListener('load', function() { window.print(); });
   </script>
 </body>
 </html>`
