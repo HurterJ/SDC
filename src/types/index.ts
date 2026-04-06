@@ -85,6 +85,7 @@ export interface ObservationComment {
   author_id: string | null
   installer_token_id: string | null
   content: string
+  photo_url?: string | null
   created_at: string
   author_profile?: Profile
   installer_name?: string

@@ -1,13 +1,15 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import dynamic from 'next/dynamic'
 import { createClient } from '@/lib/supabase/client'
 import { Observation, ObservationStatus, ObservationComment } from '@/types'
 import { STATUS_LABELS, STATUS_COLORS, STATUS_DOT_COLORS, PRIORITY_LABELS } from '@/lib/utils/status'
-import { Building2, CheckCircle, AlertTriangle, MessageSquare, Send, Loader2, ChevronDown, ChevronUp, Map, List, X, User } from 'lucide-react'
+import { compressImage, isMobileDevice } from '@/lib/utils/image'
+import { Building2, CheckCircle, AlertTriangle, MessageSquare, Send, Loader2, ChevronDown, ChevronUp, Map, List, X, User, Camera, ImageIcon } from 'lucide-react'
 import { format } from 'date-fns'
 import { fr } from 'date-fns/locale'
+import { v4 as uuidv4 } from 'uuid'
 
 const PlanViewer = dynamic(() => import('@/components/plans/PlanViewer'), { ssr: false })
 
@@ -39,7 +41,12 @@ export default function InstallerView({ token, observations: initial, plans }: P
   const [comments, setComments] = useState<Record<string, string>>({})
   const [commentsList, setCommentsList] = useState<Record<string, ObservationComment[]>>({})
   const [sending, setSending] = useState<string | null>(null)
+  const [attachedPhoto, setAttachedPhoto] = useState<Record<string, File | null>>({})
+  const [photoPreview, setPhotoPreview] = useState<Record<string, string | null>>({})
+  const photoInputRef = useRef<HTMLInputElement>(null)
+  const [activePhotoObs, setActivePhotoObs] = useState<string | null>(null)
   const supabase = createClient()
+  const mobile = typeof navigator !== 'undefined' && /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent)
 
   const canEdit = token.role === 'installateur'
   const selectedPlan = plans.find((p) => p.id === selectedPlanId)
@@ -59,31 +66,63 @@ export default function InstallerView({ token, observations: initial, plans }: P
   }
 
   async function loadComments(obsId: string) {
-    if (commentsList[obsId]) return // déjà chargés
     const { data } = await supabase
       .from('observation_comments')
-      .select('id, content, created_at, author_id, installer_name')
+      .select('id, content, created_at, author_id, installer_name, photo_url')
       .eq('observation_id', obsId)
       .order('created_at', { ascending: true })
     if (data) setCommentsList((prev) => ({ ...prev, [obsId]: data as ObservationComment[] }))
   }
 
+  function handlePhotoSelect(obsId: string, file: File) {
+    const prev = photoPreview[obsId]
+    if (prev) URL.revokeObjectURL(prev)
+    setAttachedPhoto((p) => ({ ...p, [obsId]: file }))
+    setPhotoPreview((p) => ({ ...p, [obsId]: URL.createObjectURL(file) }))
+  }
+
+  function removeAttachedPhoto(obsId: string) {
+    const prev = photoPreview[obsId]
+    if (prev) URL.revokeObjectURL(prev)
+    setAttachedPhoto((p) => ({ ...p, [obsId]: null }))
+    setPhotoPreview((p) => ({ ...p, [obsId]: null }))
+  }
+
   async function sendComment(obsId: string) {
     const content = comments[obsId]?.trim()
-    if (!content) return
+    const photo = attachedPhoto[obsId]
+    if (!content && !photo) return
     setSending(obsId)
-    const { data } = await supabase
-      .from('observation_comments')
-      .insert({ observation_id: obsId, installer_token_id: token.id, installer_name: token.name, content })
-      .select('id, content, created_at, author_id, installer_name')
-      .single()
-    if (data) {
-      setCommentsList((prev) => ({
-        ...prev,
-        [obsId]: [...(prev[obsId] ?? []), data as ObservationComment],
-      }))
+
+    let photoUrl: string | undefined
+    if (photo) {
+      const compressed = await compressImage(photo)
+      const path = `${obsId}/${uuidv4()}.webp`
+      const { error: upErr } = await supabase.storage.from('photos').upload(path, compressed, { contentType: 'image/webp' })
+      if (!upErr) {
+        const { data: urlData } = supabase.storage.from('photos').getPublicUrl(path)
+        photoUrl = urlData.publicUrl
+        // Also insert into observation_photos so engineer sees it
+        await supabase.from('observation_photos').insert({ observation_id: obsId, file_url: photoUrl, file_path: path })
+      }
     }
+
+    if (content || photoUrl) {
+      const { data } = await supabase
+        .from('observation_comments')
+        .insert({ observation_id: obsId, installer_token_id: token.id, installer_name: token.name, content: content || '', photo_url: photoUrl })
+        .select('id, content, created_at, author_id, installer_name, photo_url')
+        .single()
+      if (data) {
+        setCommentsList((prev) => ({
+          ...prev,
+          [obsId]: [...(prev[obsId] ?? []), data as ObservationComment],
+        }))
+      }
+    }
+
     setComments({ ...comments, [obsId]: '' })
+    removeAttachedPhoto(obsId)
     setSending(null)
   }
 
@@ -246,28 +285,64 @@ export default function InstallerView({ token, observations: initial, plans }: P
                               <div className="flex items-center gap-1 mb-0.5">
                                 <User className="w-3 h-3 text-slate-400" />
                                 <span className="text-xs font-medium text-slate-500">
-                                  {c.installer_name ?? 'Conducteur'}
+                                  {c.author_id ? 'Conducteur' : (c.installer_name ?? 'Installateur')}
                                 </span>
                                 <span className="text-xs text-slate-300 ml-auto">
                                   {format(new Date(c.created_at), 'dd/MM HH:mm')}
                                 </span>
                               </div>
-                              <p className="text-sm text-slate-700">{c.content}</p>
+                              {c.content && <p className="text-sm text-slate-700">{c.content}</p>}
+                              {(c as any).photo_url && (
+                                <img src={(c as any).photo_url} alt="Photo" className="mt-1.5 rounded-lg max-h-40 object-cover" />
+                              )}
                             </div>
                           ))}
                         </div>
                       )}
 
+                      {/* Prévisualisation photo attachée */}
+                      {photoPreview[obs.id] && (
+                        <div className="relative inline-block mb-2">
+                          <img src={photoPreview[obs.id]!} alt="Aperçu" className="h-20 rounded-lg object-cover border border-slate-200" />
+                          <button onClick={() => removeAttachedPhoto(obs.id)} className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center">
+                            <X className="w-3 h-3" />
+                          </button>
+                        </div>
+                      )}
+
+                      {/* Input caché pour photo */}
+                      <input
+                        ref={activePhotoObs === obs.id ? photoInputRef : undefined}
+                        type="file"
+                        accept="image/*"
+                        capture={mobile ? 'environment' : undefined}
+                        className="hidden"
+                        onChange={async (e) => {
+                          const file = e.target.files?.[0]
+                          if (file) handlePhotoSelect(obs.id, file)
+                          e.target.value = ''
+                        }}
+                      />
+
                       <div className="flex gap-2">
                         <input
                           value={comments[obs.id] ?? ''}
                           onChange={(e) => setComments({ ...comments, [obs.id]: e.target.value })}
+                          onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendComment(obs.id) } }}
                           placeholder="Votre commentaire..."
                           className="flex-1 px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 text-slate-900"
                         />
                         <button
+                          type="button"
+                          onClick={() => { setActivePhotoObs(obs.id); setTimeout(() => photoInputRef.current?.click(), 0) }}
+                          className="p-2 border border-slate-200 text-slate-500 rounded-lg hover:border-blue-300 hover:text-blue-600 transition-colors"
+                          title="Joindre une photo"
+                        >
+                          {mobile ? <Camera className="w-4 h-4" /> : <ImageIcon className="w-4 h-4" />}
+                        </button>
+                        <button
                           onClick={() => sendComment(obs.id)}
-                          disabled={sending === obs.id || !comments[obs.id]?.trim()}
+                          disabled={sending === obs.id || (!comments[obs.id]?.trim() && !attachedPhoto[obs.id])}
                           className="p-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors"
                         >
                           {sending === obs.id ? (

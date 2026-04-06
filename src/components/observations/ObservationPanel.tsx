@@ -32,7 +32,7 @@ export default function ObservationPanel({ observation, userId, role, onClose, o
   const canEdit = role === 'conducteur'
   const canResolve = role === 'conducteur' || role === 'installateur'
 
-  // Charger les commentaires depuis la DB à chaque ouverture
+  // Charger les commentaires et s'abonner aux nouveaux en temps réel
   useEffect(() => {
     setLoadingComments(true)
     supabase
@@ -44,6 +44,23 @@ export default function ObservationPanel({ observation, userId, role, onClose, o
         setComments((data as ObservationComment[]) ?? [])
         setLoadingComments(false)
       })
+
+    const channel = supabase
+      .channel(`comments:${observation.id}`)
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'observation_comments', filter: `observation_id=eq.${observation.id}` },
+        (payload) => {
+          setComments((prev) => {
+            if (prev.some((c) => c.id === payload.new.id)) return prev
+            return [...prev, payload.new as ObservationComment]
+          })
+        }
+      )
+      .subscribe()
+
+    return () => { supabase.removeChannel(channel) }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [observation.id])
 
   async function updateStatus(status: ObservationStatus) {
@@ -198,7 +215,10 @@ export default function ObservationPanel({ observation, userId, role, onClose, o
                         {format(new Date(c.created_at), 'dd/MM HH:mm')}
                       </span>
                     </div>
-                    <p className="text-sm text-slate-700">{c.content}</p>
+                    {c.content && <p className="text-sm text-slate-700">{c.content}</p>}
+                    {c.photo_url && (
+                      <img src={c.photo_url} alt="Photo jointe" className="mt-1.5 rounded-lg max-h-48 object-cover cursor-pointer" onClick={() => window.open(c.photo_url!, '_blank')} />
+                    )}
                   </div>
                 )
               })}

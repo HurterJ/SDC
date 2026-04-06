@@ -10,7 +10,7 @@ import { v4 as uuidv4 } from 'uuid'
 
 interface Props {
   observationId: string
-  userId: string
+  userId: string | null
   canUpload: boolean
 }
 
@@ -44,9 +44,11 @@ export default function PhotoUpload({ observationId, userId, canUpload }: Props)
         .from('photos').upload(path, file, { contentType: 'image/webp' })
       if (!upErr) {
         const { data: urlData } = supabase.storage.from('photos').getPublicUrl(path)
+        const record: Record<string, string> = { observation_id: observationId, file_url: urlData.publicUrl, file_path: path }
+        if (userId) record.uploaded_by = userId
         const { data } = await supabase
           .from('observation_photos')
-          .insert({ observation_id: observationId, file_url: urlData.publicUrl, file_path: path, uploaded_by: userId })
+          .insert(record)
           .select()
           .single()
         if (data) setPhotos((prev) => [...prev, data])
