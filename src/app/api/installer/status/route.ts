@@ -18,7 +18,11 @@ export async function POST(req: NextRequest) {
     .eq('is_active', true)
     .single()
 
-  if (!token || token.role !== 'installateur') {
+  // Valider le token actif (role installateur ou colonne absente = autorisé)
+  if (!token) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
+  if (token.role && token.role !== 'installateur') {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 

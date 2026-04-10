@@ -51,8 +51,9 @@ export default async function InstallerPage({ params }: Props) {
       const photos = await Promise.all(
         obs.observation_photos.map(async (p: any) => {
           if (!p.file_path) return p
-          const { data } = await admin.storage.from('photos').createSignedUrl(p.file_path, 3600)
-          return { ...p, file_url: data?.signedUrl ?? p.file_url }
+          const { data, error } = await admin.storage.from('photos').createSignedUrl(p.file_path, 3600)
+          if (error) console.error('[installer] signed URL error:', error.message, 'path:', p.file_path)
+          return { ...p, file_url: data?.signedUrl ?? null }
         })
       )
       return { ...obs, observation_photos: photos }

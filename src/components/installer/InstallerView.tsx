@@ -275,11 +275,11 @@ export default function InstallerView({ token, observations: initial, plans }: P
                     )}
 
                     {/* Photos de l'observation */}
-                    {(obs as any).observation_photos?.length > 0 && (
+                    {(obs as any).observation_photos?.some((p: any) => p.file_url) && (
                       <div>
                         <p className="text-xs font-medium text-slate-500 mb-2">Photos</p>
                         <div className="grid grid-cols-3 gap-2">
-                          {(obs as any).observation_photos.map((p: any) => (
+                          {(obs as any).observation_photos.filter((p: any) => p.file_url).map((p: any) => (
                             <button
                               key={p.id}
                               onClick={() => setLightbox(p.file_url)}
