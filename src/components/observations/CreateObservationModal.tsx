@@ -5,7 +5,7 @@ import { useDropzone } from 'react-dropzone'
 import { createClient } from '@/lib/supabase/client'
 import { compressImage, isMobileDevice } from '@/lib/utils/image'
 import { Observation, ObservationPriority } from '@/types'
-import { X, Loader2, Upload, ImageIcon, Camera } from 'lucide-react'
+import { X, Loader2, Upload, ImageIcon, Camera, Sparkles } from 'lucide-react'
 import { v4 as uuidv4 } from 'uuid'
 
 interface Props {
@@ -43,10 +43,35 @@ export default function CreateObservationModal({
   const [loading, setLoading] = useState(false)
   const [uploadStep, setUploadStep] = useState<'idle' | 'creating' | 'uploading'>('idle')
   const [mobile, setMobile] = useState(false)
+  const [aiInput, setAiInput] = useState('')
+  const [aiLoading, setAiLoading] = useState(false)
+  const [aiGenerated, setAiGenerated] = useState(false)
   const cameraRef = useRef<HTMLInputElement>(null)
   const supabase = createClient()
 
   useEffect(() => { setMobile(isMobileDevice()) }, [])
+
+  async function generateWithAI() {
+    if (!aiInput.trim() || aiLoading) return
+    setAiLoading(true)
+    try {
+      const res = await fetch('/api/ai/generate-observation', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ raw: aiInput }),
+      })
+      if (res.ok) {
+        const data = await res.json()
+        if (data.title) setTitle(data.title)
+        if (data.description) setDescription(data.description)
+        if (data.category && CATEGORIES.includes(data.category)) setCategory(data.category)
+        if (data.priority) setPriority(data.priority as ObservationPriority)
+        setAiGenerated(true)
+      }
+    } finally {
+      setAiLoading(false)
+    }
+  }
 
   // Révoquer toutes les URLs à la fermeture du modal
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -142,6 +167,38 @@ export default function CreateObservationModal({
         </div>
 
         <form id="create-obs-form" onSubmit={handleSubmit} className="p-6 space-y-4 overflow-y-auto flex-1">
+          {/* Bloc IA */}
+          <div className="rounded-xl border border-violet-200 bg-violet-50 p-3 space-y-2">
+            <div className="flex items-center gap-1.5">
+              <Sparkles className="w-3.5 h-3.5 text-violet-500" />
+              <span className="text-xs font-semibold text-violet-700">Générer avec l'IA</span>
+              {aiGenerated && (
+                <span className="ml-auto text-xs text-violet-500 bg-violet-100 px-2 py-0.5 rounded-full">
+                  Formulaire rempli
+                </span>
+              )}
+            </div>
+            <div className="flex gap-2">
+              <input
+                value={aiInput}
+                onChange={(e) => { setAiInput(e.target.value); setAiGenerated(false) }}
+                onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); generateWithAI() } }}
+                placeholder="Décrivez la réserve en quelques mots..."
+                className="flex-1 px-3 py-1.5 border border-violet-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-violet-400 text-slate-900 placeholder:text-slate-400"
+              />
+              <button
+                type="button"
+                onClick={generateWithAI}
+                disabled={!aiInput.trim() || aiLoading}
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-violet-600 text-white rounded-lg text-xs font-medium hover:bg-violet-700 disabled:opacity-50 transition-colors"
+              >
+                {aiLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5" />}
+                Générer
+              </button>
+            </div>
+            <p className="text-xs text-violet-400">L'IA remplit automatiquement le titre, la description, la catégorie et la priorité.</p>
+          </div>
+
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-1">
               Titre <span className="text-red-500">*</span>

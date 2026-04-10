@@ -6,7 +6,7 @@ import { createClient } from '@/lib/supabase/client' // lecture commentaires uni
 import { Observation, ObservationStatus, ObservationComment } from '@/types'
 import { STATUS_LABELS, STATUS_COLORS, STATUS_DOT_COLORS, PRIORITY_LABELS } from '@/lib/utils/status'
 import { compressImage, isMobileDevice } from '@/lib/utils/image'
-import { Building2, CheckCircle, AlertTriangle, MessageSquare, Send, Loader2, ChevronDown, ChevronUp, Map, List, X, User, Camera, ImageIcon } from 'lucide-react'
+import { Building2, CheckCircle, AlertTriangle, MessageSquare, Send, Loader2, ChevronDown, ChevronUp, Map, List, X, User, Camera, ImageIcon, Sparkles } from 'lucide-react'
 import { format } from 'date-fns'
 import { fr } from 'date-fns/locale'
 
@@ -45,6 +45,8 @@ export default function InstallerView({ token, observations: initial, plans }: P
   const [lightbox, setLightbox] = useState<string | null>(null)
   const photoInputRef = useRef<HTMLInputElement>(null)
   const [activePhotoObs, setActivePhotoObs] = useState<string | null>(null)
+  const [suggestions, setSuggestions] = useState<Record<string, string[]>>({})
+  const [loadingSuggestions, setLoadingSuggestions] = useState<string | null>(null)
   const supabase = createClient()
   const mobile = typeof navigator !== 'undefined' && /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent)
 
@@ -133,6 +135,28 @@ export default function InstallerView({ token, observations: initial, plans }: P
       removeAttachedPhoto(obsId)
     } finally {
       setSending(null)
+    }
+  }
+
+  async function fetchSuggestions(obs: Observation) {
+    setLoadingSuggestions(obs.id)
+    setSuggestions((prev) => ({ ...prev, [obs.id]: [] }))
+    try {
+      const res = await fetch('/api/ai/suggest-reply', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          observation_title: obs.title,
+          observation_description: obs.description,
+          comments: commentsList[obs.id] ?? [],
+        }),
+      })
+      if (res.ok) {
+        const { suggestions: s } = await res.json()
+        setSuggestions((prev) => ({ ...prev, [obs.id]: s }))
+      }
+    } finally {
+      setLoadingSuggestions(null)
     }
   }
 
@@ -316,6 +340,46 @@ export default function InstallerView({ token, observations: initial, plans }: P
                               )}
                             </div>
                           ))}
+                        </div>
+                      )}
+
+                      {/* Suggestions IA */}
+                      {canEdit && (
+                        <div className="mb-2">
+                          {(suggestions[obs.id] ?? []).length > 0 ? (
+                            <div className="space-y-1.5">
+                              <p className="text-xs text-violet-500 flex items-center gap-1">
+                                <Sparkles className="w-3 h-3" /> Suggestions
+                              </p>
+                              <div className="flex flex-wrap gap-1.5">
+                                {suggestions[obs.id].map((s, i) => (
+                                  <button
+                                    key={i}
+                                    type="button"
+                                    onClick={() => {
+                                      setComments((prev) => ({ ...prev, [obs.id]: s }))
+                                      setSuggestions((prev) => ({ ...prev, [obs.id]: [] }))
+                                    }}
+                                    className="text-xs px-2.5 py-1 bg-violet-50 border border-violet-200 text-violet-700 rounded-full hover:bg-violet-100 transition-colors text-left"
+                                  >
+                                    {s}
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => fetchSuggestions(obs)}
+                              disabled={loadingSuggestions === obs.id}
+                              className="flex items-center gap-1.5 text-xs text-violet-500 hover:text-violet-700 disabled:opacity-50 transition-colors"
+                            >
+                              {loadingSuggestions === obs.id
+                                ? <Loader2 className="w-3 h-3 animate-spin" />
+                                : <Sparkles className="w-3 h-3" />}
+                              Suggérer une réponse avec l'IA
+                            </button>
+                          )}
                         </div>
                       )}
 
