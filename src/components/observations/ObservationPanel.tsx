@@ -37,7 +37,7 @@ export default function ObservationPanel({ observation, userId, role, onClose, o
     setLoadingComments(true)
     supabase
       .from('observation_comments')
-      .select('id, content, created_at, author_id, installer_token_id, installer_name')
+      .select('*')
       .eq('observation_id', observation.id)
       .order('created_at', { ascending: true })
       .then(({ data }) => {
@@ -65,16 +65,19 @@ export default function ObservationPanel({ observation, userId, role, onClose, o
 
   async function updateStatus(status: ObservationStatus) {
     setUpdating(true)
-    const update: Partial<Observation> = { status }
-    if (status === 'resolue') update.resolved_at = new Date().toISOString()
-    const { data, error } = await supabase
-      .from('observations')
-      .update(update)
-      .eq('id', observation.id)
-      .select()
-      .single()
-    if (!error && data) onUpdated(data as Observation)
-    setUpdating(false)
+    try {
+      const update: Partial<Observation> = { status }
+      if (status === 'resolue') update.resolved_at = new Date().toISOString()
+      const { data, error } = await supabase
+        .from('observations')
+        .update(update)
+        .eq('id', observation.id)
+        .select()
+        .single()
+      if (!error && data) onUpdated(data as Observation)
+    } finally {
+      setUpdating(false)
+    }
   }
 
   async function deleteObservation() {
@@ -89,16 +92,19 @@ export default function ObservationPanel({ observation, userId, role, onClose, o
     e.preventDefault()
     if (!comment.trim()) return
     setSendingComment(true)
-    const { data } = await supabase
-      .from('observation_comments')
-      .insert({ observation_id: observation.id, author_id: userId, content: comment })
-      .select('id, content, created_at, author_id, installer_token_id, installer_name')
-      .single()
-    if (data) {
-      setComments((prev) => [...prev, data as ObservationComment])
-      setComment('')
+    try {
+      const { data } = await supabase
+        .from('observation_comments')
+        .insert({ observation_id: observation.id, author_id: userId, content: comment })
+        .select('*')
+        .single()
+      if (data) {
+        setComments((prev) => [...prev, data as ObservationComment])
+        setComment('')
+      }
+    } finally {
+      setSendingComment(false)
     }
-    setSendingComment(false)
   }
 
   return (

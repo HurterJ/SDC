@@ -34,8 +34,8 @@ export async function POST(req: NextRequest) {
 
   if (upErr) return NextResponse.json({ error: upErr.message }, { status: 500 })
 
-  const { data: urlData } = admin.storage.from('photos').getPublicUrl(path)
-  const file_url = urlData.publicUrl
+  const { data: urlData } = await admin.storage.from('photos').createSignedUrl(path, 3600)
+  const file_url = urlData?.signedUrl ?? path
 
   // Insérer dans observation_photos (sans uploaded_by, colonne rendue nullable via migration)
   await admin

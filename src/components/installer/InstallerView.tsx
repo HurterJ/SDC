@@ -68,7 +68,7 @@ export default function InstallerView({ token, observations: initial, plans }: P
   async function loadComments(obsId: string) {
     const { data } = await supabase
       .from('observation_comments')
-      .select('id, content, created_at, author_id, installer_name, photo_url')
+      .select('*')
       .eq('observation_id', obsId)
       .order('created_at', { ascending: true })
     if (data) setCommentsList((prev) => ({ ...prev, [obsId]: data as ObservationComment[] }))

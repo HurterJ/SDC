@@ -31,7 +31,7 @@ export async function POST(req: NextRequest) {
   const { data, error } = await admin
     .from('observation_comments')
     .insert(record)
-    .select('id, content, created_at, author_id, installer_name, photo_url')
+    .select('*')
     .single()
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
