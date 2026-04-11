@@ -6,7 +6,7 @@ import { createClient } from '@/lib/supabase/client' // lecture commentaires uni
 import { Observation, ObservationStatus, ObservationComment } from '@/types'
 import { STATUS_LABELS, STATUS_COLORS, STATUS_DOT_COLORS, PRIORITY_LABELS } from '@/lib/utils/status'
 import { compressImage, isMobileDevice } from '@/lib/utils/image'
-import { Building2, CheckCircle, AlertTriangle, MessageSquare, Send, Loader2, ChevronDown, ChevronUp, Map, List, X, User, Camera, ImageIcon, Sparkles } from 'lucide-react'
+import { Building2, CheckCircle, AlertTriangle, MessageSquare, Send, Loader2, ChevronDown, ChevronUp, Map, List, X, User, Camera, ImageIcon, Sparkles, ArrowUpDown, Filter } from 'lucide-react'
 import { format } from 'date-fns'
 import { fr } from 'date-fns/locale'
 
@@ -47,12 +47,27 @@ export default function InstallerView({ token, observations: initial, plans }: P
   const [activePhotoObs, setActivePhotoObs] = useState<string | null>(null)
   const [suggestions, setSuggestions] = useState<Record<string, string[]>>({})
   const [loadingSuggestions, setLoadingSuggestions] = useState<string | null>(null)
+  const [sortBy, setSortBy] = useState<'date_desc' | 'date_asc' | 'priority' | 'status'>('date_desc')
+  const [filterStatus, setFilterStatus] = useState<'all' | ObservationStatus>('all')
   const supabase = createClient()
   const mobile = typeof navigator !== 'undefined' && /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent)
 
   const canEdit = token.role === 'installateur'
   const selectedPlan = plans.find((p) => p.id === selectedPlanId)
   const planObs = observations.filter((o) => o.plan_id === selectedPlanId)
+
+  const PRIORITY_ORDER: Record<string, number> = { critique: 0, haute: 1, normale: 2, basse: 3 }
+  const STATUS_ORDER: Record<string, number> = { ouverte: 0, en_cours: 1, contestee: 2, resolue: 3, validee: 4 }
+
+  const displayedObs = observations
+    .filter((o) => filterStatus === 'all' || o.status === filterStatus)
+    .sort((a, b) => {
+      if (sortBy === 'date_desc') return new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+      if (sortBy === 'date_asc') return new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+      if (sortBy === 'priority') return (PRIORITY_ORDER[a.priority] ?? 9) - (PRIORITY_ORDER[b.priority] ?? 9)
+      if (sortBy === 'status') return (STATUS_ORDER[a.status] ?? 9) - (STATUS_ORDER[b.status] ?? 9)
+      return 0
+    })
 
   async function updateStatus(obsId: string, status: ObservationStatus) {
     const res = await fetch('/api/installer/status', {
@@ -239,7 +254,39 @@ export default function InstallerView({ token, observations: initial, plans }: P
         {/* ── VUE LISTE ── */}
         {view === 'list' && (
           <div className="space-y-3">
-            {observations.map((obs) => (
+            {/* Barre tri + filtre */}
+            <div className="flex gap-2 flex-wrap">
+              <div className="flex items-center gap-1.5 bg-white border border-slate-200 rounded-lg px-2.5 py-1.5">
+                <ArrowUpDown className="w-3.5 h-3.5 text-slate-400" />
+                <select
+                  value={sortBy}
+                  onChange={(e) => setSortBy(e.target.value as typeof sortBy)}
+                  className="text-xs text-slate-700 bg-transparent focus:outline-none"
+                >
+                  <option value="date_desc">Plus récentes</option>
+                  <option value="date_asc">Plus anciennes</option>
+                  <option value="priority">Par priorité</option>
+                  <option value="status">Par statut</option>
+                </select>
+              </div>
+              <div className="flex items-center gap-1.5 bg-white border border-slate-200 rounded-lg px-2.5 py-1.5">
+                <Filter className="w-3.5 h-3.5 text-slate-400" />
+                <select
+                  value={filterStatus}
+                  onChange={(e) => setFilterStatus(e.target.value as typeof filterStatus)}
+                  className="text-xs text-slate-700 bg-transparent focus:outline-none"
+                >
+                  <option value="all">Tous ({observations.length})</option>
+                  <option value="ouverte">Ouvertes ({observations.filter(o => o.status === 'ouverte').length})</option>
+                  <option value="en_cours">En cours ({observations.filter(o => o.status === 'en_cours').length})</option>
+                  <option value="contestee">Contestées ({observations.filter(o => o.status === 'contestee').length})</option>
+                  <option value="resolue">Résolues ({observations.filter(o => o.status === 'resolue').length})</option>
+                  <option value="validee">Validées ({observations.filter(o => o.status === 'validee').length})</option>
+                </select>
+              </div>
+            </div>
+
+            {displayedObs.map((obs) => (
               <div key={obs.id} className="bg-white border border-slate-200 rounded-xl overflow-hidden">
                 <button
                   onClick={() => handleExpand(obs.id)}
@@ -253,6 +300,9 @@ export default function InstallerView({ token, observations: initial, plans }: P
                         {STATUS_LABELS[obs.status]}
                       </span>
                       <span className="text-xs text-slate-400">{PRIORITY_LABELS[obs.priority]}</span>
+                      <span className="text-xs text-slate-300">
+                        {format(new Date(obs.created_at), 'dd MMM yyyy', { locale: fr })}
+                      </span>
                     </div>
                   </div>
                   {expanded === obs.id ? (
@@ -441,10 +491,12 @@ export default function InstallerView({ token, observations: initial, plans }: P
               </div>
             ))}
 
-            {!observations.length && (
+            {!displayedObs.length && (
               <div className="text-center py-16 text-slate-400">
                 <CheckCircle className="w-12 h-12 mx-auto mb-3 text-green-300" />
-                <p className="font-medium">Aucune observation en cours</p>
+                <p className="font-medium">
+                  {filterStatus === 'all' ? 'Aucune observation en cours' : 'Aucune observation dans ce filtre'}
+                </p>
               </div>
             )}
           </div>
