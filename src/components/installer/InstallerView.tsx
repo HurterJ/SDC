@@ -68,6 +68,7 @@ export default function InstallerView({ token, observations: initial, plans, las
   const [seenIds, setSeenIds] = useState<Set<string>>(new Set())
   const [lastVisit, setLastVisit] = useState<Date | null>(null)
   const [exporting, setExporting] = useState(false)
+  const [exportMenuOpen, setExportMenuOpen] = useState(false)
 
   const supabase = createClient()
   const mobile = typeof navigator !== 'undefined' && /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent)
@@ -243,14 +244,24 @@ export default function InstallerView({ token, observations: initial, plans, las
     }
   }
 
-  async function handleExport() {
+  async function handleExport(fmt: 'pdf' | 'excel') {
     setExporting(true)
+    setExportMenuOpen(false)
     try {
-      const res = await fetch(`/api/installer/export?token=${tokenString}`)
-      if (res.ok) {
+      const res = await fetch(`/api/installer/export?token=${tokenString}&format=${fmt}`)
+      if (!res.ok) return
+      if (fmt === 'pdf') {
         const html = await res.text()
         const win = window.open('', '_blank')
         if (win) { win.document.write(html); win.document.close() }
+      } else {
+        const blob = await res.blob()
+        const url = URL.createObjectURL(blob)
+        const a = document.createElement('a')
+        a.href = url
+        a.download = `controle_${tokenString.slice(0, 8)}_${new Date().toISOString().split('T')[0]}.xlsx`
+        a.click()
+        URL.revokeObjectURL(url)
       }
     } finally {
       setExporting(false)
@@ -456,11 +467,35 @@ export default function InstallerView({ token, observations: initial, plans, las
                 <p className="text-slate-400 text-xs">Accès installateur</p>
               </div>
             </div>
-            <button onClick={handleExport} disabled={exporting}
-              className="flex items-center gap-1.5 px-3 py-1.5 bg-white/10 hover:bg-white/20 rounded-lg text-xs text-white transition-colors disabled:opacity-50">
-              {exporting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <FileDown className="w-3.5 h-3.5" />}
-              Export PDF
-            </button>
+            <div className="relative">
+              <button
+                onClick={() => setExportMenuOpen(!exportMenuOpen)}
+                disabled={exporting}
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-white/10 hover:bg-white/20 rounded-lg text-xs text-white transition-colors disabled:opacity-50"
+              >
+                {exporting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <FileDown className="w-3.5 h-3.5" />}
+                Exporter
+              </button>
+              {exportMenuOpen && (
+                <div className="absolute right-0 top-full mt-1 bg-white rounded-xl shadow-xl border border-slate-200 overflow-hidden z-50 min-w-[160px]">
+                  <button
+                    onClick={() => handleExport('pdf')}
+                    className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50 transition-colors text-left"
+                  >
+                    <FileDown className="w-4 h-4 text-red-500" />
+                    Export PDF
+                  </button>
+                  <div className="h-px bg-slate-100" />
+                  <button
+                    onClick={() => handleExport('excel')}
+                    className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50 transition-colors text-left"
+                  >
+                    <FileDown className="w-4 h-4 text-green-600" />
+                    Excel contrôle
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
           <h2 className="text-lg font-semibold">{token.projects?.name}</h2>
           <p className="text-slate-400 text-xs mt-0.5">
