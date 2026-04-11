@@ -37,11 +37,31 @@ export async function GET(req: NextRequest) {
 
   const { data: rawObs } = await admin
     .from('observations')
-    .select('*, observation_comments(id, content, created_at, installer_name, author_id)')
+    .select('*, observation_photos(id, file_path), observation_comments(id, content, created_at, installer_name, author_id)')
     .eq('project_id', tokenData.project_id)
     .order('created_at', { ascending: false })
 
   const obs = rawObs ?? []
+
+  async function toBase64(filePath: string): Promise<string | null> {
+    try {
+      const { data, error } = await admin.storage.from('photos').download(filePath)
+      if (error || !data) return null
+      const buf = Buffer.from(await data.arrayBuffer()).toString('base64')
+      return `data:${data.type || 'image/jpeg'};base64,${buf}`
+    } catch { return null }
+  }
+
+  // Pré-charger toutes les photos en base64
+  const obsWithPhotos = await Promise.all(
+    obs.map(async (o: any) => {
+      const photos = o.observation_photos ?? []
+      const dataUrls = await Promise.all(
+        photos.slice(0, 4).map((p: any) => p.file_path ? toBase64(p.file_path) : null)
+      )
+      return { ...o, _photoDataUrls: dataUrls.filter(Boolean) }
+    })
+  )
 
   const totalByStatus = {
     ouverte: obs.filter((o) => o.status === 'ouverte').length,
@@ -51,8 +71,8 @@ export async function GET(req: NextRequest) {
     validee: obs.filter((o) => o.status === 'validee').length,
   }
 
-  const todo = obs.filter((o) => ['ouverte', 'en_cours', 'contestee'].includes(o.status))
-  const done = obs.filter((o) => ['resolue', 'validee'].includes(o.status))
+  const todo = obsWithPhotos.filter((o) => ['ouverte', 'en_cours', 'contestee'].includes(o.status))
+  const done = obsWithPhotos.filter((o) => ['resolue', 'validee'].includes(o.status))
 
   function renderObs(o: any) {
     const sortedComments = (o.observation_comments ?? []).sort(
@@ -62,6 +82,13 @@ export async function GET(req: NextRequest) {
     const bg = STATUS_BG[o.status] ?? '#f8fafc'
     const border = STATUS_BORDER[o.status] ?? '#e2e8f0'
     const textColor = STATUS_TEXT[o.status] ?? '#64748b'
+    const photoHtml = (o._photoDataUrls ?? []).length > 0
+      ? `<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px;">
+          ${(o._photoDataUrls as string[]).map((src) =>
+            `<img src="${src}" style="width:80px;height:80px;object-fit:cover;border-radius:6px;border:1px solid ${border};" />`
+          ).join('')}
+         </div>`
+      : ''
 
     return `
       <div style="background:${bg};border:1px solid ${border};border-radius:8px;padding:12px 14px;margin-bottom:10px;">
@@ -77,6 +104,7 @@ export async function GET(req: NextRequest) {
           ${o.due_date ? `<span style="font-size:11px;color:#f97316;">Échéance : ${format(new Date(o.due_date), 'dd MMMM yyyy', { locale: fr })}</span>` : ''}
           <span style="font-size:11px;color:#94a3b8;">Créée le ${format(new Date(o.created_at), 'dd/MM/yyyy', { locale: fr })}</span>
         </div>
+        ${photoHtml}
         ${lastComment ? `
           <div style="margin-top:8px;padding:6px 10px;background:rgba(255,255,255,0.6);border-radius:6px;font-size:11px;color:#475569;">
             <strong>${lastComment.author_id ? 'Conducteur' : (lastComment.installer_name ?? 'Installateur')} :</strong>

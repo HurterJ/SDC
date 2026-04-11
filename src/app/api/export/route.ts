@@ -29,7 +29,7 @@ export async function GET(request: NextRequest) {
 
   let query = supabase
     .from('observations')
-    .select('*, observation_photos(id, file_url)')
+    .select('*, observation_photos(id, file_url, file_path)')
     .eq('project_id', projectId)
     .order('created_at', { ascending: false })
 
