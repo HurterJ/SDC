@@ -60,11 +60,29 @@ export default async function InstallerPage({ params }: Props) {
     })
   )
 
+  // Charger le dernier commentaire par observation
+  const observationIds = (observations ?? []).map((o: any) => o.id)
+  let lastCommentsMap: Record<string, any> = {}
+  if (observationIds.length > 0) {
+    const { data: allComments } = await supabase
+      .from('observation_comments')
+      .select('id, observation_id, content, created_at, installer_name, author_id')
+      .in('observation_id', observationIds)
+      .order('created_at', { ascending: false })
+    if (allComments) {
+      for (const c of allComments) {
+        if (!lastCommentsMap[c.observation_id]) lastCommentsMap[c.observation_id] = c
+      }
+    }
+  }
+
   return (
     <InstallerView
       token={tokenData}
       observations={obsWithSignedUrls}
       plans={plans ?? []}
+      lastComments={lastCommentsMap}
+      tokenString={params.token}
     />
   )
 }
