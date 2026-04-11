@@ -168,10 +168,10 @@ export default function ObservationPanel({ observation, userId, role, onClose, o
                 <button
                   key={s}
                   onClick={() => updateStatus(s)}
-                  disabled={updating || observation.status === s}
+                  disabled={updating}
                   className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all border ${
                     observation.status === s
-                      ? STATUS_COLORS[s] + ' cursor-default'
+                      ? STATUS_COLORS[s] + ' cursor-default pointer-events-none'
                       : 'border-slate-200 text-slate-600 hover:border-blue-300 hover:text-blue-700 disabled:opacity-50'
                   }`}
                 >
