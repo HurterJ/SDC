@@ -84,7 +84,7 @@ export default function ObservationsListClient({ observations: initial, userId, 
   }
 
   return (
-    <div className="flex gap-6 h-full">
+    <div className="flex gap-6 h-full relative">
       <div className="flex-1 flex flex-col min-w-0">
         {/* Compteurs rapides */}
         <div className="grid grid-cols-3 gap-3 mb-4">
@@ -234,18 +234,31 @@ export default function ObservationsListClient({ observations: initial, userId, 
         )}
       </div>
 
-      {/* Detail panel */}
+      {/* Detail panel — desktop: side panel, mobile: full-screen overlay */}
       {selected && (
-        <div className="w-96 bg-white border border-slate-200 rounded-xl overflow-hidden flex-shrink-0 sticky top-0 self-start max-h-[calc(100vh-8rem)] overflow-y-auto">
-          <ObservationPanel
-            observation={selected}
-            userId={userId}
-            role={role}
-            onClose={() => setSelected(null)}
-            onUpdated={handleUpdated}
-            onDeleted={handleDeleted}
+        <>
+          {/* Mobile overlay backdrop */}
+          <div
+            className="md:hidden fixed inset-0 bg-black/40 z-40"
+            onClick={() => setSelected(null)}
           />
-        </div>
+          {/* Panel */}
+          <div className="
+            fixed inset-x-0 bottom-0 z-50 max-h-[90dvh] overflow-y-auto bg-white rounded-t-2xl shadow-2xl
+            md:static md:inset-auto md:z-auto md:max-h-none md:w-96 md:bg-white md:border md:border-slate-200
+            md:rounded-xl md:overflow-hidden md:flex-shrink-0 md:sticky md:top-0 md:self-start
+            md:max-h-[calc(100vh-8rem)]
+          ">
+            <ObservationPanel
+              observation={selected}
+              userId={userId}
+              role={role}
+              onClose={() => setSelected(null)}
+              onUpdated={handleUpdated}
+              onDeleted={handleDeleted}
+            />
+          </div>
+        </>
       )}
 
       {/* Export modal */}

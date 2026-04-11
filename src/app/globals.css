@@ -10,6 +10,18 @@
 body {
   color: var(--foreground);
   background: var(--background);
+  /* Prevent overscroll bounce on iOS */
+  overscroll-behavior: none;
+}
+
+/* Safe area utilities for notched phones */
+.safe-area-bottom {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+/* Better tap highlight on mobile */
+* {
+  -webkit-tap-highlight-color: transparent;
 }
 
 /* Smooth scrollbar */

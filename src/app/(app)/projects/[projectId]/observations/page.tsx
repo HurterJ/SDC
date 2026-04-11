@@ -39,7 +39,7 @@ export default async function ObservationsPage({ params }: Props) {
   return (
     <div className="flex flex-col h-full overflow-hidden">
       <Header title={`Réserves — ${project.name}`} />
-      <main className="flex-1 overflow-y-auto p-6">
+      <main className="flex-1 overflow-y-auto p-3 md:p-6">
         <ObservationsListClient
           observations={observations ?? []}
           userId={user.id}

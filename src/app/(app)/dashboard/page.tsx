@@ -20,7 +20,7 @@ export default async function DashboardPage() {
   return (
     <div className="flex flex-col h-full overflow-hidden">
       <Header title="Tableau de bord" />
-      <main className="flex-1 overflow-y-auto p-6">
+      <main className="flex-1 overflow-y-auto p-3 md:p-6">
         <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
           <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
             <h2 className="font-semibold text-slate-800">Mes projets</h2>
