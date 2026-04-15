@@ -38,9 +38,10 @@ export async function POST(req: NextRequest) {
   const file_url = urlData?.signedUrl ?? path
 
   // Insérer dans observation_photos (sans uploaded_by, colonne rendue nullable via migration)
-  await admin
+  const { error: insertErr } = await admin
     .from('observation_photos')
     .insert({ observation_id, file_url, file_path: path })
 
+  if (insertErr) return NextResponse.json({ error: insertErr.message }, { status: 500 })
   return NextResponse.json({ file_url })
 }

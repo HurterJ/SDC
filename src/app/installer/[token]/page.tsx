@@ -62,7 +62,7 @@ export default async function InstallerPage({ params }: Props) {
 
   // Charger le dernier commentaire par observation
   const observationIds = (observations ?? []).map((o: any) => o.id)
-  let lastCommentsMap: Record<string, any> = {}
+  const lastCommentsMap: Record<string, any> = {}
   if (observationIds.length > 0) {
     const { data: allComments } = await supabase
       .from('observation_comments')
