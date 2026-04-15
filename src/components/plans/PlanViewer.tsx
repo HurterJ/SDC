@@ -1,14 +1,10 @@
 'use client'
 
-import { useState, useRef, useCallback, useEffect } from 'react'
+import { useState, useRef, useCallback } from 'react'
 import { TransformWrapper, TransformComponent } from 'react-zoom-pan-pinch'
-import { Document, Page, pdfjs } from 'react-pdf'
 import { Observation } from '@/types'
 import { PIN_COLORS, STATUS_LABELS } from '@/lib/utils/status'
-import { ZoomIn, ZoomOut, Maximize2, Loader2 } from 'lucide-react'
-
-// Worker copié dans /public via postinstall — évite le /_next/undefined avec pdfjs-dist v4
-pdfjs.GlobalWorkerOptions.workerSrc = '/pdf.worker.min.mjs'
+import { ZoomIn, ZoomOut, Maximize2, ExternalLink } from 'lucide-react'
 
 interface Props {
   planUrl: string
@@ -19,22 +15,10 @@ interface Props {
 }
 
 export default function PlanViewer({ planUrl, observations, canAddPin, onPinClick, onMapClick }: Props) {
-  const [pdfWidth, setPdfWidth] = useState(900)
   const [currentScale, setCurrentScale] = useState(1)
   const contentRef = useRef<HTMLDivElement>(null)
   const wrapperRef = useRef<HTMLDivElement>(null)
   const isPdf = /\.pdf($|\?)/i.test(planUrl)
-
-  // ResizeObserver : recalcule la largeur PDF quand le conteneur change de taille
-  useEffect(() => {
-    if (!isPdf || !wrapperRef.current) return
-    const observer = new ResizeObserver(([entry]) => {
-      const w = entry.contentRect.width
-      if (w > 0) setPdfWidth(Math.min(w - 32, 1400))
-    })
-    observer.observe(wrapperRef.current)
-    return () => observer.disconnect()
-  }, [isPdf])
 
   const handleDoubleClick = useCallback(
     (e: React.MouseEvent<HTMLDivElement>) => {
@@ -50,6 +34,38 @@ export default function PlanViewer({ planUrl, observations, canAddPin, onPinClic
     [canAddPin, onMapClick]
   )
 
+  // Pour les PDFs : on utilise le viewer natif du navigateur via iframe.
+  // Les pins ne sont pas supportés sur PDF (le navigateur gère le zoom nativement).
+  if (isPdf) {
+    return (
+      <div ref={wrapperRef} className="relative w-full h-full bg-slate-800 rounded-xl overflow-hidden">
+        <iframe
+          src={planUrl}
+          className="w-full h-full border-0"
+          title="Plan PDF"
+        />
+        {/* Bouton ouvrir dans un nouvel onglet */}
+        <a
+          href={planUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="absolute top-4 right-4 z-20 w-9 h-9 bg-white rounded-lg shadow flex items-center justify-center hover:bg-slate-50 transition-colors"
+          title="Ouvrir dans un nouvel onglet"
+        >
+          <ExternalLink className="w-4 h-4 text-slate-700" />
+        </a>
+        {observations.length > 0 && (
+          <div className="absolute bottom-4 left-4 z-20 bg-white/90 backdrop-blur rounded-lg shadow px-3 py-2">
+            <p className="text-xs text-slate-600">
+              {observations.length} observation{observations.length !== 1 ? 's' : ''} — gestion via la vue liste
+            </p>
+          </div>
+        )}
+      </div>
+    )
+  }
+
+  // Images : on garde le zoom/pan interactif + les pins
   return (
     <div ref={wrapperRef} className="relative w-full h-full bg-slate-800 rounded-xl overflow-hidden">
       <TransformWrapper
@@ -94,35 +110,9 @@ export default function PlanViewer({ planUrl, observations, canAddPin, onPinClic
                 className={`relative w-full h-full flex items-center justify-center ${canAddPin ? 'cursor-crosshair' : ''}`}
                 onDoubleClick={handleDoubleClick}
               >
-                {isPdf ? (
-                  <Document
-                    file={planUrl}
-                    loading={
-                      <div className="flex flex-col items-center gap-3 text-white">
-                        <Loader2 className="w-8 h-8 animate-spin text-blue-400" />
-                        <p className="text-sm">Chargement du plan PDF...</p>
-                      </div>
-                    }
-                    error={
-                      <div className="text-red-300 text-sm text-center p-8">
-                        Impossible de charger le PDF.<br />Vérifiez que le bucket Supabase est public.
-                      </div>
-                    }
-                  >
-                    <Page
-                      pageNumber={1}
-                      width={pdfWidth}
-                      devicePixelRatio={Math.min(window.devicePixelRatio * 4, 8)}
-                      renderAnnotationLayer={false}
-                      renderTextLayer={false}
-                      className="shadow-2xl"
-                    />
-                  </Document>
-                ) : (
-                  <img src={planUrl} alt="Plan"
-                    className="max-w-full max-h-full object-contain select-none shadow-2xl"
-                    draggable={false} />
-                )}
+                <img src={planUrl} alt="Plan"
+                  className="max-w-full max-h-full object-contain select-none shadow-2xl"
+                  draggable={false} />
 
                 {/* Pins — taille visuelle constante via scale(1/zoom) */}
                 {observations.map((obs) => {
