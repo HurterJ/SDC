@@ -7,7 +7,8 @@ import { Observation } from '@/types'
 import { PIN_COLORS, STATUS_LABELS } from '@/lib/utils/status'
 import { ZoomIn, ZoomOut, Maximize2, Loader2 } from 'lucide-react'
 
-pdfjs.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`
+// Worker copié dans /public via postinstall — évite le /_next/undefined avec pdfjs-dist v4
+pdfjs.GlobalWorkerOptions.workerSrc = '/pdf.worker.min.mjs'
 
 interface Props {
   planUrl: string
