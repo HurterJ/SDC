@@ -13,6 +13,13 @@ const nextConfig = {
   experimental: {
     serverComponentsExternalPackages: ['puppeteer', 'exceljs'],
   },
+  webpack: (config) => {
+    // Fix react-pdf / pdfjs-dist: these optional native modules don't exist
+    // in browser context and cause /_next/undefined chunk load errors
+    config.resolve.alias.canvas = false
+    config.resolve.alias.encoding = false
+    return config
+  },
 }
 
 export default nextConfig
