@@ -1,14 +1,12 @@
 'use client'
 
-import { useState } from 'react'
-import dynamic from 'next/dynamic'
+import { useState, useEffect } from 'react'
 import { Plan, Observation } from '@/types'
 import ObservationPanel from '@/components/observations/ObservationPanel'
 import CreateObservationModal from '@/components/observations/CreateObservationModal'
+import PlanViewer from '@/components/plans/PlanViewer'
 import { ArrowLeft, Map, ChevronLeft, ChevronRight, LayoutList } from 'lucide-react'
 import Link from 'next/link'
-
-const PlanViewer = dynamic(() => import('@/components/plans/PlanViewer'), { ssr: false })
 
 interface PlanItem {
   id: string
@@ -32,6 +30,9 @@ export default function PlanPageClient({
   const [selectedObs, setSelectedObs] = useState<Observation | null>(null)
   const [pendingPin, setPendingPin] = useState<{ x: number; y: number } | null>(null)
   const [sidebarOpen, setSidebarOpen] = useState(true)
+  const [mounted, setMounted] = useState(false)
+
+  useEffect(() => { setMounted(true) }, [])
 
   const canEdit = role === 'conducteur' || role === 'installateur'
 
@@ -142,13 +143,15 @@ export default function PlanPageClient({
 
         {/* Plan viewer */}
         <div className="flex-1 p-4 overflow-hidden">
-          <PlanViewer
-            planUrl={plan.file_url}
-            observations={observations}
-            canAddPin={canEdit}
-            onPinClick={(obs) => setSelectedObs(obs)}
-            onMapClick={handleMapClick}
-          />
+          {mounted && (
+            <PlanViewer
+              planUrl={plan.file_url}
+              observations={observations}
+              canAddPin={canEdit}
+              onPinClick={(obs) => setSelectedObs(obs)}
+              onMapClick={handleMapClick}
+            />
+          )}
         </div>
 
         {/* Side panel observation */}
