@@ -36,7 +36,7 @@ export default function Sidebar() {
       >
         {/* Logo */}
         <div className={cn('flex items-center gap-3 px-4 py-5 border-b border-slate-700', collapsed && 'justify-center px-2')}>
-          <div className="flex-shrink-0 w-9 h-9 bg-blue-600 rounded-xl flex items-center justify-center">
+          <div className="shrink-0 w-9 h-9 bg-blue-600 rounded-xl flex items-center justify-center">
             <Building2 className="w-5 h-5 text-white" />
           </div>
           {!collapsed && (
@@ -72,7 +72,7 @@ export default function Sidebar() {
                 )}
                 title={collapsed ? label : undefined}
               >
-                <Icon className="w-5 h-5 flex-shrink-0" />
+                <Icon className="w-5 h-5 shrink-0" />
                 {!collapsed && <span className="text-sm font-medium">{label}</span>}
               </Link>
             )
@@ -89,7 +89,7 @@ export default function Sidebar() {
             )}
             title={collapsed ? 'Déconnexion' : undefined}
           >
-            <LogOut className="w-5 h-5 flex-shrink-0" />
+            <LogOut className="w-5 h-5 shrink-0" />
             {!collapsed && <span className="text-sm font-medium">Déconnexion</span>}
           </button>
         </div>

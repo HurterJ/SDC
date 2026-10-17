@@ -53,7 +53,7 @@ export default async function DashboardPage() {
                     href={`/projects/${project.id}`}
                     className="flex items-center gap-4 px-6 py-4 hover:bg-slate-50 transition-colors"
                   >
-                    <div className="w-9 h-9 bg-blue-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                    <div className="w-9 h-9 bg-blue-100 rounded-lg flex items-center justify-center shrink-0">
                       <FolderOpen className="w-5 h-5 text-blue-600" />
                     </div>
                     <div className="flex-1 min-w-0">
@@ -62,7 +62,7 @@ export default async function DashboardPage() {
                         Mis à jour le {new Date(project.updated_at).toLocaleDateString('fr-FR')}
                       </p>
                     </div>
-                    <ChevronRight className="w-4 h-4 text-slate-400 flex-shrink-0" />
+                    <ChevronRight className="w-4 h-4 text-slate-400 shrink-0" />
                   </Link>
                 </li>
               ))}

@@ -94,7 +94,7 @@ export default function NewPlanPage({ params }: { params: Promise<{ projectId: s
               value={name}
               onChange={(e) => setName(e.target.value)}
               required
-              className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-slate-900"
+              className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-hidden focus:ring-2 focus:ring-blue-500 text-slate-900"
               placeholder="Ex: Niveau RDC — Électricité"
             />
           </div>
@@ -105,7 +105,7 @@ export default function NewPlanPage({ params }: { params: Promise<{ projectId: s
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               rows={2}
-              className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-slate-900 resize-none"
+              className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-hidden focus:ring-2 focus:ring-blue-500 text-slate-900 resize-none"
               placeholder="Description optionnelle..."
             />
           </div>
@@ -117,12 +117,12 @@ export default function NewPlanPage({ params }: { params: Promise<{ projectId: s
 
             {file ? (
               <div className="flex items-center gap-3 p-4 border border-green-200 bg-green-50 rounded-lg">
-                <File className="w-6 h-6 text-green-600 flex-shrink-0" />
+                <File className="w-6 h-6 text-green-600 shrink-0" />
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium text-slate-800 truncate">{file.name}</p>
                   <p className="text-xs text-slate-500">{(file.size / 1024 / 1024).toFixed(2)} Mo</p>
                 </div>
-                <button type="button" onClick={() => setFile(null)} className="p-1 hover:bg-green-100 rounded">
+                <button type="button" onClick={() => setFile(null)} className="p-1 hover:bg-green-100 rounded-sm">
                   <X className="w-4 h-4 text-slate-500" />
                 </button>
               </div>

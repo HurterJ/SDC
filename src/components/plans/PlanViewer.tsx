@@ -49,13 +49,13 @@ export default function PlanViewer({ planUrl, observations, canAddPin, onPinClic
           href={planUrl}
           target="_blank"
           rel="noopener noreferrer"
-          className="absolute top-4 right-4 z-20 w-9 h-9 bg-white rounded-lg shadow flex items-center justify-center hover:bg-slate-50 transition-colors"
+          className="absolute top-4 right-4 z-20 w-9 h-9 bg-white rounded-lg shadow-sm flex items-center justify-center hover:bg-slate-50 transition-colors"
           title="Ouvrir dans un nouvel onglet"
         >
           <ExternalLink className="w-4 h-4 text-slate-700" />
         </a>
         {observations.length > 0 && (
-          <div className="absolute bottom-4 left-4 z-20 bg-white/90 backdrop-blur rounded-lg shadow px-3 py-2">
+          <div className="absolute bottom-4 left-4 z-20 bg-white/90 backdrop-blur-sm rounded-lg shadow-sm px-3 py-2">
             <p className="text-xs text-slate-600">
               {observations.length} observation{observations.length !== 1 ? 's' : ''} — gestion via la vue liste
             </p>
@@ -83,14 +83,14 @@ export default function PlanViewer({ planUrl, observations, canAddPin, onPinClic
                 { fn: resetTransform, Icon: Maximize2, title: 'Réinitialiser' },
               ] as const).map(({ fn, Icon, title }) => (
                 <button key={title} onClick={() => fn()} title={title}
-                  className="w-9 h-9 bg-white rounded-lg shadow flex items-center justify-center hover:bg-slate-50 transition-colors">
+                  className="w-9 h-9 bg-white rounded-lg shadow-sm flex items-center justify-center hover:bg-slate-50 transition-colors">
                   <Icon className="w-4 h-4 text-slate-700" />
                 </button>
               ))}
             </div>
 
             {/* Indicateur zoom */}
-            <div className="absolute top-4 right-16 z-20 bg-white/80 backdrop-blur rounded-lg px-2 py-1 text-xs text-slate-600 font-mono">
+            <div className="absolute top-4 right-16 z-20 bg-white/80 backdrop-blur-sm rounded-lg px-2 py-1 text-xs text-slate-600 font-mono">
               {Math.round(currentScale * 100)}%
             </div>
 
@@ -129,7 +129,7 @@ export default function PlanViewer({ planUrl, observations, canAddPin, onPinClic
       </TransformWrapper>
 
       {/* Légende statuts */}
-      <div className="absolute bottom-4 left-4 z-20 bg-white/90 backdrop-blur rounded-lg shadow px-3 py-2">
+      <div className="absolute bottom-4 left-4 z-20 bg-white/90 backdrop-blur-sm rounded-lg shadow-sm px-3 py-2">
         <div className="flex flex-wrap gap-2">
           {Object.entries(PIN_COLORS).map(([status, color]) => (
             <div key={status} className="flex items-center gap-1">

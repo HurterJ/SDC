@@ -20,7 +20,7 @@ export default async function Header({ title }: HeaderProps) {
   }
 
   return (
-    <header className="h-14 bg-white border-b border-slate-200 flex items-center justify-between px-6 flex-shrink-0">
+    <header className="h-14 bg-white border-b border-slate-200 flex items-center justify-between px-6 shrink-0">
       <h1 className="text-lg font-semibold text-slate-800">{title}</h1>
       <div className="flex items-center gap-4">
         <button className="relative p-2 text-slate-500 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition-colors">

@@ -96,7 +96,7 @@ export default function ProjectsClient({ projects: initial, userId }: Props) {
 
       {/* Create modal */}
       {showModal && (
-        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-xs flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md">
             <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
               <h3 className="font-semibold text-slate-800">Nouveau projet</h3>
@@ -113,7 +113,7 @@ export default function ProjectsClient({ projects: initial, userId }: Props) {
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   required
-                  className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-slate-900"
+                  className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-hidden focus:ring-2 focus:ring-blue-500 text-slate-900"
                   placeholder="Ex: Immeuble Résidence Les Pins"
                 />
               </div>
@@ -123,7 +123,7 @@ export default function ProjectsClient({ projects: initial, userId }: Props) {
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
                   rows={3}
-                  className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-slate-900 resize-none"
+                  className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-hidden focus:ring-2 focus:ring-blue-500 text-slate-900 resize-none"
                   placeholder="Description du chantier..."
                 />
               </div>
@@ -132,7 +132,7 @@ export default function ProjectsClient({ projects: initial, userId }: Props) {
                 <input
                   value={address}
                   onChange={(e) => setAddress(e.target.value)}
-                  className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-slate-900"
+                  className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-hidden focus:ring-2 focus:ring-blue-500 text-slate-900"
                   placeholder="123 rue de la Paix, 75001 Paris"
                 />
               </div>

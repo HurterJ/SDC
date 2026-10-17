@@ -119,14 +119,14 @@ export default function ObservationsListClient({ observations: initial, userId, 
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Rechercher..."
-              className="w-full pl-9 pr-4 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 text-slate-900"
+              className="w-full pl-9 pr-4 py-2 border border-slate-200 rounded-lg text-sm focus:outline-hidden focus:ring-2 focus:ring-blue-500 text-slate-900"
             />
           </div>
 
           <select
             value={filterStatus}
             onChange={(e) => setFilterStatus(e.target.value as ObservationStatus | 'all')}
-            className="px-3 py-2 border border-slate-200 rounded-lg text-sm text-slate-700 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="px-3 py-2 border border-slate-200 rounded-lg text-sm text-slate-700 bg-white focus:outline-hidden focus:ring-2 focus:ring-blue-500"
           >
             <option value="all">Tous les statuts</option>
             {ALL_STATUSES.map((s) => (
@@ -137,7 +137,7 @@ export default function ObservationsListClient({ observations: initial, userId, 
           <select
             value={filterPriority}
             onChange={(e) => setFilterPriority(e.target.value as ObservationPriority | 'all')}
-            className="px-3 py-2 border border-slate-200 rounded-lg text-sm text-slate-700 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="px-3 py-2 border border-slate-200 rounded-lg text-sm text-slate-700 bg-white focus:outline-hidden focus:ring-2 focus:ring-blue-500"
           >
             <option value="all">Toutes priorités</option>
             {ALL_PRIORITIES.map((p) => (
@@ -149,7 +149,7 @@ export default function ObservationsListClient({ observations: initial, userId, 
             <select
               value={filterCategory}
               onChange={(e) => setFilterCategory(e.target.value)}
-              className="px-3 py-2 border border-slate-200 rounded-lg text-sm text-slate-700 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="px-3 py-2 border border-slate-200 rounded-lg text-sm text-slate-700 bg-white focus:outline-hidden focus:ring-2 focus:ring-blue-500"
             >
               <option value="all">Toutes catégories</option>
               {categories.map((c) => (
@@ -161,7 +161,7 @@ export default function ObservationsListClient({ observations: initial, userId, 
           <select
             value={sortKey}
             onChange={(e) => setSortKey(e.target.value as SortKey)}
-            className="px-3 py-2 border border-slate-200 rounded-lg text-sm text-slate-700 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="px-3 py-2 border border-slate-200 rounded-lg text-sm text-slate-700 bg-white focus:outline-hidden focus:ring-2 focus:ring-blue-500"
           >
             {(Object.keys(SORT_LABELS) as SortKey[]).map((k) => (
               <option key={k} value={k}>{SORT_LABELS[k]}</option>
@@ -199,7 +199,7 @@ export default function ObservationsListClient({ observations: initial, userId, 
                 }`}
               >
                 <div className="flex items-start gap-3">
-                  <div className={`w-2.5 h-2.5 rounded-full mt-1.5 flex-shrink-0 ${STATUS_DOT_COLORS[obs.status]}`} />
+                  <div className={`w-2.5 h-2.5 rounded-full mt-1.5 shrink-0 ${STATUS_DOT_COLORS[obs.status]}`} />
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
                       <p className="font-medium text-slate-800 truncate">{obs.title}</p>
@@ -246,7 +246,7 @@ export default function ObservationsListClient({ observations: initial, userId, 
           <div className="
             fixed inset-x-0 bottom-0 z-50 max-h-[90dvh] overflow-y-auto bg-white rounded-t-2xl shadow-2xl
             md:static md:inset-auto md:z-auto md:max-h-none md:w-96 md:bg-white md:border md:border-slate-200
-            md:rounded-xl md:overflow-hidden md:flex-shrink-0 md:sticky md:top-0 md:self-start
+            md:rounded-xl md:overflow-hidden md:shrink-0 md:sticky md:top-0 md:self-start
             md:max-h-[calc(100vh-8rem)]
           ">
             <ObservationPanel

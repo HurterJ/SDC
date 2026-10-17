@@ -59,7 +59,7 @@ export default function PlanPageClient({
   return (
     <div className="flex flex-col h-screen overflow-hidden">
       {/* Top bar */}
-      <div className="flex items-center gap-4 px-4 py-3 bg-white border-b border-slate-200 flex-shrink-0">
+      <div className="flex items-center gap-4 px-4 py-3 bg-white border-b border-slate-200 shrink-0">
         <Link
           href={`/projects/${projectId}`}
           className="p-1.5 hover:bg-slate-100 rounded-lg transition-colors"
@@ -70,7 +70,7 @@ export default function PlanPageClient({
           <p className="text-xs text-slate-400 truncate">{projectName}</p>
           <h1 className="font-semibold text-slate-800 truncate">{plan.name}</h1>
         </div>
-        <p className="text-xs text-slate-400 flex-shrink-0">
+        <p className="text-xs text-slate-400 shrink-0">
           {observations.length} obs.
         </p>
         <button
@@ -86,19 +86,19 @@ export default function PlanPageClient({
         {/* Sidebar arborescence gauche */}
         <aside
           className={`
-            flex-shrink-0 bg-white border-r border-slate-200 overflow-y-auto flex flex-col transition-all duration-200
+            shrink-0 bg-white border-r border-slate-200 overflow-y-auto flex flex-col transition-all duration-200
             ${sidebarOpen ? 'w-56' : 'w-0 overflow-hidden'}
             hidden md:flex
           `}
         >
           <div className="flex items-center justify-between px-3 py-3 border-b border-slate-100">
             <div className="flex items-center gap-2 min-w-0">
-              <Map className="w-4 h-4 text-slate-500 flex-shrink-0" />
+              <Map className="w-4 h-4 text-slate-500 shrink-0" />
               <span className="text-xs font-semibold text-slate-600 uppercase tracking-wide truncate">Plans</span>
             </div>
             <button
               onClick={() => setSidebarOpen(!sidebarOpen)}
-              className="p-1 hover:bg-slate-100 rounded flex-shrink-0"
+              className="p-1 hover:bg-slate-100 rounded-sm shrink-0"
             >
               <ChevronLeft className="w-4 h-4 text-slate-400" />
             </button>
@@ -124,7 +124,7 @@ export default function PlanPageClient({
                       : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
                   }`}
                 >
-                  <Map className={`w-3.5 h-3.5 flex-shrink-0 ${isCurrent ? 'text-blue-600' : 'text-slate-400'}`} />
+                  <Map className={`w-3.5 h-3.5 shrink-0 ${isCurrent ? 'text-blue-600' : 'text-slate-400'}`} />
                   <span className="truncate">{p.name}</span>
                 </Link>
               )
@@ -135,7 +135,7 @@ export default function PlanPageClient({
         {!sidebarOpen && (
           <button
             onClick={() => setSidebarOpen(true)}
-            className="hidden md:flex flex-shrink-0 w-6 items-center justify-center bg-white border-r border-slate-200 hover:bg-slate-50 transition-colors"
+            className="hidden md:flex shrink-0 w-6 items-center justify-center bg-white border-r border-slate-200 hover:bg-slate-50 transition-colors"
           >
             <ChevronRight className="w-3 h-3 text-slate-400" />
           </button>
@@ -156,7 +156,7 @@ export default function PlanPageClient({
 
         {/* Side panel observation */}
         {selectedObs && (
-          <div className="w-80 xl:w-96 border-l border-slate-200 bg-white overflow-y-auto flex-shrink-0">
+          <div className="w-80 xl:w-96 border-l border-slate-200 bg-white overflow-y-auto shrink-0">
             <ObservationPanel
               observation={selectedObs}
               userId={userId}

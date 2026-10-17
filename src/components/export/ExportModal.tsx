@@ -53,7 +53,7 @@ export default function ExportModal({ projectId, projectName, onClose }: Props) 
   }
 
   return (
-    <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+    <div className="fixed inset-0 bg-black/40 backdrop-blur-xs flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md">
         <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
           <h3 className="font-semibold text-slate-800">Exporter les réserves</h3>
@@ -69,7 +69,7 @@ export default function ExportModal({ projectId, projectName, onClose }: Props) 
             <input
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 text-slate-900"
+              className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-hidden focus:ring-2 focus:ring-blue-500 text-slate-900"
             />
           </div>
 
@@ -82,7 +82,7 @@ export default function ExportModal({ projectId, projectName, onClose }: Props) 
               value={subtitle}
               onChange={(e) => setSubtitle(e.target.value)}
               placeholder="Ex: Contrôle du 05/04/2026 — Lot électricité"
-              className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 text-slate-900"
+              className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-hidden focus:ring-2 focus:ring-blue-500 text-slate-900"
             />
           </div>
 
@@ -116,7 +116,7 @@ export default function ExportModal({ projectId, projectName, onClose }: Props) 
                 onClick={() => setShowPhotos(!showPhotos)}
                 className={`w-10 h-6 rounded-full transition-colors ${showPhotos ? 'bg-blue-600' : 'bg-slate-200'}`}
               >
-                <div className={`w-4 h-4 bg-white rounded-full shadow mt-1 transition-transform ${showPhotos ? 'translate-x-5' : 'translate-x-1'}`} />
+                <div className={`w-4 h-4 bg-white rounded-full shadow-sm mt-1 transition-transform ${showPhotos ? 'translate-x-5' : 'translate-x-1'}`} />
               </div>
               <span className="text-sm text-slate-700">Inclure les photos</span>
             </label>
@@ -126,7 +126,7 @@ export default function ExportModal({ projectId, projectName, onClose }: Props) 
                 onClick={() => setColorMode(!colorMode)}
                 className={`w-10 h-6 rounded-full transition-colors ${colorMode ? 'bg-blue-600' : 'bg-slate-200'}`}
               >
-                <div className={`w-4 h-4 bg-white rounded-full shadow mt-1 transition-transform ${colorMode ? 'translate-x-5' : 'translate-x-1'}`} />
+                <div className={`w-4 h-4 bg-white rounded-full shadow-sm mt-1 transition-transform ${colorMode ? 'translate-x-5' : 'translate-x-1'}`} />
               </div>
               <span className="text-sm text-slate-700">Affichage en couleurs</span>
             </label>

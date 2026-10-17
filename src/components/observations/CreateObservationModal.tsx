@@ -157,7 +157,7 @@ export default function CreateObservationModal({
     "Créer l'observation"
 
   return (
-    <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+    <div className="fixed inset-0 bg-black/40 backdrop-blur-xs flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] flex flex-col">
         <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
           <h3 className="font-semibold text-slate-800">Nouvelle observation</h3>
@@ -184,7 +184,7 @@ export default function CreateObservationModal({
                 onChange={(e) => { setAiInput(e.target.value); setAiGenerated(false) }}
                 onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); generateWithAI() } }}
                 placeholder="Décrivez la réserve en quelques mots..."
-                className="flex-1 px-3 py-1.5 border border-violet-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-violet-400 text-slate-900 placeholder:text-slate-400"
+                className="flex-1 px-3 py-1.5 border border-violet-200 rounded-lg text-sm bg-white focus:outline-hidden focus:ring-2 focus:ring-violet-400 text-slate-900 placeholder:text-slate-400"
               />
               <button
                 type="button"
@@ -204,14 +204,14 @@ export default function CreateObservationModal({
               Titre <span className="text-red-500">*</span>
             </label>
             <input value={title} onChange={(e) => setTitle(e.target.value)} required
-              className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-slate-900"
+              className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-hidden focus:ring-2 focus:ring-blue-500 text-slate-900"
               placeholder="Ex: Fissure sur le mur porteur..." />
           </div>
 
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-1">Description</label>
             <textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={2}
-              className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-slate-900 resize-none"
+              className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-hidden focus:ring-2 focus:ring-blue-500 text-slate-900 resize-none"
               placeholder="Description détaillée..." />
           </div>
 
@@ -219,14 +219,14 @@ export default function CreateObservationModal({
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-1">Priorité</label>
               <select value={priority} onChange={(e) => setPriority(e.target.value as ObservationPriority)}
-                className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-slate-900 bg-white">
+                className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-hidden focus:ring-2 focus:ring-blue-500 text-slate-900 bg-white">
                 {PRIORITIES.map((p) => <option key={p.value} value={p.value}>{p.label}</option>)}
               </select>
             </div>
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-1">Catégorie</label>
               <select value={category} onChange={(e) => setCategory(e.target.value)}
-                className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-slate-900 bg-white">
+                className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-hidden focus:ring-2 focus:ring-blue-500 text-slate-900 bg-white">
                 <option value="">— Sélectionner —</option>
                 {CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
               </select>
@@ -236,7 +236,7 @@ export default function CreateObservationModal({
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-1">Date d'échéance</label>
             <input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)}
-              className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-slate-900" />
+              className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-hidden focus:ring-2 focus:ring-blue-500 text-slate-900" />
           </div>
 
           {/* Photos */}

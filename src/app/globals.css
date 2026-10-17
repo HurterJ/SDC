@@ -1,6 +1,45 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import 'tailwindcss';
+
+@theme {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+}
+
+/*
+  Valeurs par défaut de Tailwind 3 conservées après le passage à Tailwind 4 :
+  - couleur de bordure gray-200 (currentcolor en v4) ;
+  - placeholder gray-400 (currentcolor à 50 % en v4) ;
+  - fond blanc des champs de formulaire (transparent en v4) ;
+  - curseur pointer sur les boutons (default en v4).
+  Pour retirer une de ces règles, il faut d'abord ajouter la classe explicite
+  (border-*, placeholder:*, bg-white, cursor-pointer) aux éléments qui en dépendent.
+*/
+@layer base {
+  *,
+  ::after,
+  ::before,
+  ::backdrop,
+  ::file-selector-button {
+    border-color: var(--color-gray-200, currentcolor);
+  }
+
+  input::placeholder,
+  textarea::placeholder {
+    color: var(--color-gray-400);
+  }
+
+  input:where(:not([type='button'], [type='reset'], [type='submit'], [type='file'],
+      [type='checkbox'], [type='radio'], [type='range'], [type='color'], [type='image'])),
+  textarea,
+  select {
+    background-color: #fff;
+  }
+
+  button:not(:disabled),
+  [role='button']:not(:disabled) {
+    cursor: pointer;
+  }
+}
 
 :root {
   --background: #f8fafc;

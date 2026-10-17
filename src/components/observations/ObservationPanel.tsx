@@ -117,7 +117,7 @@ export default function ObservationPanel({ observation, userId, role, onClose, o
             {format(new Date(observation.created_at), 'dd MMMM yyyy à HH:mm', { locale: fr })}
           </p>
         </div>
-        <button onClick={onClose} className="p-1 hover:bg-slate-100 rounded-lg flex-shrink-0">
+        <button onClick={onClose} className="p-1 hover:bg-slate-100 rounded-lg shrink-0">
           <X className="w-4 h-4 text-slate-500" />
         </button>
       </div>
@@ -236,7 +236,7 @@ export default function ObservationPanel({ observation, userId, role, onClose, o
               value={comment}
               onChange={(e) => setComment(e.target.value)}
               placeholder="Ajouter un commentaire..."
-              className="flex-1 px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 text-slate-900"
+              className="flex-1 px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-hidden focus:ring-2 focus:ring-blue-500 text-slate-900"
             />
             <button
               type="submit"

@@ -134,12 +134,12 @@ export default function MembersClient({ tokens: initial, userId, projectId }: Pr
                     </div>
 
                     <div className="flex items-center gap-2 mt-2">
-                      <code className="text-xs text-slate-500 bg-slate-50 px-2 py-1 rounded truncate max-w-xs">
+                      <code className="text-xs text-slate-500 bg-slate-50 px-2 py-1 rounded-sm truncate max-w-xs">
                         {url}
                       </code>
                       <button
                         onClick={() => copyLink(token.token)}
-                        className="p-1 hover:bg-slate-100 rounded transition-colors"
+                        className="p-1 hover:bg-slate-100 rounded-sm transition-colors"
                         title="Copier le lien"
                       >
                         {copied === token.token ? (
@@ -189,7 +189,7 @@ export default function MembersClient({ tokens: initial, userId, projectId }: Pr
 
       {/* Create token modal */}
       {showModal && (
-        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-xs flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md">
             <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
               <h3 className="font-semibold text-slate-800">Créer un lien d'accès</h3>
@@ -206,7 +206,7 @@ export default function MembersClient({ tokens: initial, userId, projectId }: Pr
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   required
-                  className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-slate-900"
+                  className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-hidden focus:ring-2 focus:ring-blue-500 text-slate-900"
                   placeholder="Ex: Jean Dupont"
                 />
               </div>
@@ -216,7 +216,7 @@ export default function MembersClient({ tokens: initial, userId, projectId }: Pr
                   <input
                     value={company}
                     onChange={(e) => setCompany(e.target.value)}
-                    className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-slate-900"
+                    className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-hidden focus:ring-2 focus:ring-blue-500 text-slate-900"
                     placeholder="SARL BTP..."
                   />
                 </div>
@@ -225,7 +225,7 @@ export default function MembersClient({ tokens: initial, userId, projectId }: Pr
                   <select
                     value={role}
                     onChange={(e) => setRole(e.target.value as 'installateur' | 'lecteur')}
-                    className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-slate-900 bg-white"
+                    className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-hidden focus:ring-2 focus:ring-blue-500 text-slate-900 bg-white"
                   >
                     <option value="installateur">Installateur</option>
                     <option value="lecteur">Lecteur</option>
@@ -238,7 +238,7 @@ export default function MembersClient({ tokens: initial, userId, projectId }: Pr
                   type="date"
                   value={expiresAt}
                   onChange={(e) => setExpiresAt(e.target.value)}
-                  className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-slate-900"
+                  className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-hidden focus:ring-2 focus:ring-blue-500 text-slate-900"
                 />
               </div>
               <div className="flex gap-3 pt-2">

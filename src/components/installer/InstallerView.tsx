@@ -272,12 +272,12 @@ export default function InstallerView({ token, observations: initial, plans, las
     return (
       <div key={obs.id} className={`bg-white border rounded-xl overflow-hidden transition-colors ${obsIsNew ? 'border-blue-300' : 'border-slate-200'}`}>
         <button onClick={() => handleExpand(obs.id)} className="w-full text-left p-4 flex items-start gap-3">
-          <div className={`w-2.5 h-2.5 rounded-full mt-1.5 flex-shrink-0 ${STATUS_DOT_COLORS[obs.status]}`} />
+          <div className={`w-2.5 h-2.5 rounded-full mt-1.5 shrink-0 ${STATUS_DOT_COLORS[obs.status]}`} />
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 mb-1">
               <p className="font-medium text-slate-800 truncate">{obs.title}</p>
               {obsIsNew && (
-                <span className="flex-shrink-0 text-xs px-1.5 py-0.5 bg-blue-600 text-white rounded-full font-medium">
+                <span className="shrink-0 text-xs px-1.5 py-0.5 bg-blue-600 text-white rounded-full font-medium">
                   Nouveau
                 </span>
               )}
@@ -293,7 +293,7 @@ export default function InstallerView({ token, observations: initial, plans, las
             </div>
             {lastComment && expanded !== obs.id && (
               <p className="text-xs text-slate-400 mt-1.5 truncate flex items-center gap-1">
-                <MessageSquare className="w-3 h-3 flex-shrink-0" />
+                <MessageSquare className="w-3 h-3 shrink-0" />
                 <span className="font-medium">
                   {lastComment.author_id ? 'Conducteur' : (lastComment.installer_name ?? 'Installateur')} :
                 </span>
@@ -302,8 +302,8 @@ export default function InstallerView({ token, observations: initial, plans, las
             )}
           </div>
           {expanded === obs.id
-            ? <ChevronUp className="w-4 h-4 text-slate-400 flex-shrink-0" />
-            : <ChevronDown className="w-4 h-4 text-slate-400 flex-shrink-0" />}
+            ? <ChevronUp className="w-4 h-4 text-slate-400 shrink-0" />
+            : <ChevronDown className="w-4 h-4 text-slate-400 shrink-0" />}
         </button>
 
         {expanded === obs.id && (
@@ -430,7 +430,7 @@ export default function InstallerView({ token, observations: initial, plans, las
                   onChange={(e) => setComments({ ...comments, [obs.id]: e.target.value })}
                   onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendComment(obs.id) } }}
                   placeholder="Votre commentaire..."
-                  className="flex-1 px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 text-slate-900"
+                  className="flex-1 px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-hidden focus:ring-2 focus:ring-blue-500 text-slate-900"
                 />
                 <button type="button"
                   onClick={() => { setActivePhotoObs(obs.id); setTimeout(() => photoInputRef.current?.click(), 0) }}
@@ -563,7 +563,7 @@ export default function InstallerView({ token, observations: initial, plans, las
               <div className="flex items-center gap-1.5 bg-white border border-slate-200 rounded-lg px-2.5 py-1.5">
                 <ArrowUpDown className="w-3.5 h-3.5 text-slate-400" />
                 <select value={sortBy} onChange={(e) => setSortBy(e.target.value as typeof sortBy)}
-                  className="text-xs text-slate-700 bg-transparent focus:outline-none">
+                  className="text-xs text-slate-700 bg-transparent focus:outline-hidden">
                   <option value="date_desc">Plus récentes</option>
                   <option value="date_asc">Plus anciennes</option>
                   <option value="priority">Par priorité</option>
@@ -575,7 +575,7 @@ export default function InstallerView({ token, observations: initial, plans, las
                 <div className="flex items-center gap-1.5 bg-white border border-slate-200 rounded-lg px-2.5 py-1.5">
                   <Filter className="w-3.5 h-3.5 text-slate-400" />
                   <select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value as typeof filterStatus)}
-                    className="text-xs text-slate-700 bg-transparent focus:outline-none">
+                    className="text-xs text-slate-700 bg-transparent focus:outline-hidden">
                     <option value="all">Tous ({observations.length})</option>
                     <option value="ouverte">Ouvertes ({observations.filter((o) => o.status === 'ouverte').length})</option>
                     <option value="en_cours">En cours ({observations.filter((o) => o.status === 'en_cours').length})</option>
@@ -638,7 +638,7 @@ export default function InstallerView({ token, observations: initial, plans, las
               <div className="flex gap-2 overflow-x-auto pb-1">
                 {plans.map((p) => (
                   <button key={p.id} onClick={() => setSelectedPlanId(p.id)}
-                    className={`flex-shrink-0 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                    className={`shrink-0 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
                       selectedPlanId === p.id ? 'bg-blue-600 text-white' : 'bg-white border border-slate-200 text-slate-600 hover:border-blue-300'
                     }`}>
                     {p.name}
@@ -660,7 +660,7 @@ export default function InstallerView({ token, observations: initial, plans, las
 
       {/* Lightbox */}
       {lightbox && (
-        <div className="fixed inset-0 bg-black/85 z-[100] flex items-center justify-center p-4" onClick={() => setLightbox(null)}>
+        <div className="fixed inset-0 bg-black/85 z-100 flex items-center justify-center p-4" onClick={() => setLightbox(null)}>
           <img src={lightbox} alt="Photo" className="max-w-full max-h-full object-contain rounded-lg" />
           <button onClick={() => setLightbox(null)} className="absolute top-4 right-4 p-2 bg-white/10 rounded-full hover:bg-white/20 transition-colors">
             <X className="w-6 h-6 text-white" />

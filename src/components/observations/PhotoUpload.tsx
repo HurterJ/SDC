@@ -187,7 +187,7 @@ export default function PhotoUpload({ observationId, userId, canUpload }: Props)
 
       {/* Lightbox */}
       {preview && (
-        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-[100] p-4" onClick={() => setPreview(null)}>
+        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-100 p-4" onClick={() => setPreview(null)}>
           <img src={preview} alt="Aperçu" className="max-w-full max-h-full object-contain rounded-lg" />
           <button onClick={() => setPreview(null)}
             className="absolute top-4 right-4 p-2 bg-white/10 rounded-full hover:bg-white/20 transition-colors">
