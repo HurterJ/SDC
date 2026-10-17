@@ -5,7 +5,7 @@ import { Observation, ObservationStatus, ObservationPriority } from '@/types'
 import { STATUS_LABELS, STATUS_COLORS, STATUS_DOT_COLORS, PRIORITY_LABELS, PRIORITY_COLORS } from '@/lib/utils/status'
 import ObservationPanel from './ObservationPanel'
 import ExportModal from '@/components/export/ExportModal'
-import { Search, Download, AlertCircle, ChevronDown } from 'lucide-react'
+import { Search, Download, AlertCircle } from 'lucide-react'
 import { format } from 'date-fns'
 import { fr } from 'date-fns/locale'
 
