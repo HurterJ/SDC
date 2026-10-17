@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { STATUS_LABELS, PRIORITY_LABELS } from '@/lib/utils/status'
+import { escapeHtml } from '@/lib/utils/html'
 
 export async function GET(request: NextRequest) {
   const { searchParams } = request.nextUrl
@@ -217,7 +218,7 @@ async function exportPdf(project: any, observations: any[], opts: PdfOptions) {
         )
         const imgs = dataUrls
           .filter(Boolean)
-          .map((src) => `<img src="${src}" style="width:80px;height:80px;object-fit:cover;border-radius:4px;" />`)
+          .map((src) => `<img src="${escapeHtml(src)}" style="width:80px;height:80px;object-fit:cover;border-radius:4px;" />`)
           .join('')
         if (imgs) photoHtml = `<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px;">${imgs}</div>`
       }
@@ -229,21 +230,21 @@ async function exportPdf(project: any, observations: any[], opts: PdfOptions) {
       <tr>
         <td style="text-align:center;padding:8px 6px;border-bottom:1px solid #e2e8f0;font-size:10px;color:#64748b;">${i + 1}</td>
         <td style="padding:8px 10px;border-bottom:1px solid #e2e8f0;max-width:260px;">
-          <strong style="font-size:11px;color:#0f172a;">${obs.title}</strong>
-          ${obs.description ? `<br><span style="font-size:9px;color:#64748b;">${obs.description.substring(0, 120)}${obs.description.length > 120 ? '…' : ''}</span>` : ''}
+          <strong style="font-size:11px;color:#0f172a;">${escapeHtml(obs.title)}</strong>
+          ${obs.description ? `<br><span style="font-size:9px;color:#64748b;">${escapeHtml(obs.description.substring(0, 120))}${obs.description.length > 120 ? '…' : ''}</span>` : ''}
           ${photoHtml}
         </td>
         <td style="padding:8px 6px;border-bottom:1px solid #e2e8f0;">
           <span style="display:inline-block;padding:2px 8px;border-radius:12px;font-size:9px;font-weight:600;${statusBadgeStyle(obs.status, opts.colorMode)}">
-            ${STATUS_LABELS[obs.status as keyof typeof STATUS_LABELS] ?? obs.status}
+            ${escapeHtml(STATUS_LABELS[obs.status as keyof typeof STATUS_LABELS] ?? obs.status)}
           </span>
         </td>
         <td style="padding:8px 6px;border-bottom:1px solid #e2e8f0;">
           <span style="display:inline-block;padding:2px 8px;border-radius:12px;font-size:9px;font-weight:600;${priorityBadgeStyle(obs.priority, opts.colorMode)}">
-            ${PRIORITY_LABELS[obs.priority as keyof typeof PRIORITY_LABELS] ?? obs.priority}
+            ${escapeHtml(PRIORITY_LABELS[obs.priority as keyof typeof PRIORITY_LABELS] ?? obs.priority)}
           </span>
         </td>
-        <td style="padding:8px 6px;border-bottom:1px solid #e2e8f0;font-size:10px;color:#64748b;">${obs.category ?? '—'}</td>
+        <td style="padding:8px 6px;border-bottom:1px solid #e2e8f0;font-size:10px;color:#64748b;">${escapeHtml(obs.category ?? '—')}</td>
         <td style="padding:8px 6px;border-bottom:1px solid #e2e8f0;font-size:10px;color:#64748b;">${obs.created_at ? new Date(obs.created_at).toLocaleDateString('fr-FR') : '—'}</td>
         <td style="padding:8px 6px;border-bottom:1px solid #e2e8f0;font-size:10px;color:${obs.due_date ? '#ea580c' : '#94a3b8'};">${obs.due_date ? new Date(obs.due_date).toLocaleDateString('fr-FR') : '—'}</td>
       </tr>`
@@ -253,7 +254,7 @@ async function exportPdf(project: any, observations: any[], opts: PdfOptions) {
 <html lang="fr">
 <head>
   <meta charset="UTF-8">
-  <title>${opts.title}</title>
+  <title>${escapeHtml(opts.title)}</title>
   <style>
     * { margin:0; padding:0; box-sizing:border-box; }
     body { font-family: -apple-system, Arial, sans-serif; color:#0f172a; background:#fff; }
@@ -275,9 +276,9 @@ async function exportPdf(project: any, observations: any[], opts: PdfOptions) {
   <!-- Page de garde -->
   <div style="min-height:100vh;display:flex;flex-direction:column;justify-content:center;padding:60px 60px;page-break-after:always;">
     <div style="width:60px;height:6px;background:#1e3a5f;border-radius:3px;margin-bottom:32px;"></div>
-    <h1 style="font-size:36px;font-weight:800;color:#0f172a;line-height:1.2;margin-bottom:16px;">${opts.title}</h1>
-    ${opts.subtitle ? `<p style="font-size:18px;color:#475569;margin-bottom:8px;">${opts.subtitle}</p>` : ''}
-    <p style="font-size:14px;color:#94a3b8;margin-top:8px;">${project?.address ?? ''}</p>
+    <h1 style="font-size:36px;font-weight:800;color:#0f172a;line-height:1.2;margin-bottom:16px;">${escapeHtml(opts.title)}</h1>
+    ${opts.subtitle ? `<p style="font-size:18px;color:#475569;margin-bottom:8px;">${escapeHtml(opts.subtitle)}</p>` : ''}
+    <p style="font-size:14px;color:#94a3b8;margin-top:8px;">${escapeHtml(project?.address ?? '')}</p>
     <div style="margin-top:48px;padding:24px;background:#f8fafc;border-radius:12px;display:inline-block;">
       <p style="font-size:13px;color:#64748b;">Généré le <strong style="color:#0f172a;">${date}</strong></p>
       <p style="font-size:13px;color:#64748b;margin-top:4px;">${observations.length} réserve${observations.length !== 1 ? 's' : ''} dans ce rapport</p>

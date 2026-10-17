@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { getInstallerToken } from '@/lib/installer/token'
+import { escapeHtml } from '@/lib/utils/html'
 import { format } from 'date-fns'
 import { fr } from 'date-fns/locale'
 
@@ -234,7 +235,7 @@ async function exportPdf(obs: any[], tokenData: any, projectName: string, admin:
     const photoHtml = (o._photoDataUrls ?? []).length > 0
       ? `<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px;">
           ${(o._photoDataUrls as string[]).map((src) =>
-            `<img src="${src}" style="width:80px;height:80px;object-fit:cover;border-radius:6px;border:1px solid ${border};" />`
+            `<img src="${escapeHtml(src)}" style="width:80px;height:80px;object-fit:cover;border-radius:6px;border:1px solid ${border};" />`
           ).join('')}
          </div>`
       : ''
@@ -242,14 +243,14 @@ async function exportPdf(obs: any[], tokenData: any, projectName: string, admin:
     return `
       <div style="background:${bg};border:1px solid ${border};border-radius:8px;padding:12px 14px;margin-bottom:10px;">
         <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;margin-bottom:6px;">
-          <span style="font-weight:600;font-size:13px;color:#1e293b;">${o.title}</span>
+          <span style="font-weight:600;font-size:13px;color:#1e293b;">${escapeHtml(o.title)}</span>
           <span style="font-size:11px;padding:2px 8px;border-radius:12px;background:${bg};color:${textColor};border:1px solid ${border};white-space:nowrap;">
-            ${STATUS_LABELS[o.status] ?? o.status}
+            ${escapeHtml(STATUS_LABELS[o.status] ?? o.status)}
           </span>
         </div>
-        ${o.description ? `<p style="font-size:12px;color:#475569;margin-bottom:4px;">${o.description}</p>` : ''}
+        ${o.description ? `<p style="font-size:12px;color:#475569;margin-bottom:4px;">${escapeHtml(o.description)}</p>` : ''}
         <div style="display:flex;gap:12px;flex-wrap:wrap;margin-top:4px;">
-          ${o.category ? `<span style="font-size:11px;color:#94a3b8;">Catégorie : ${o.category}</span>` : ''}
+          ${o.category ? `<span style="font-size:11px;color:#94a3b8;">Catégorie : ${escapeHtml(o.category)}</span>` : ''}
           ${o.due_date ? `<span style="font-size:11px;color:#f97316;">Échéance : ${format(new Date(o.due_date), 'dd MMMM yyyy', { locale: fr })}</span>` : ''}
           <span style="font-size:11px;color:#94a3b8;">Créée le ${format(new Date(o.created_at), 'dd/MM/yyyy', { locale: fr })}</span>
           ${o.resolved_at ? `<span style="font-size:11px;color:#16a34a;">Résolue le ${format(new Date(o.resolved_at), 'dd/MM/yyyy', { locale: fr })}</span>` : ''}
@@ -257,8 +258,8 @@ async function exportPdf(obs: any[], tokenData: any, projectName: string, admin:
         ${photoHtml}
         ${lastComment ? `
           <div style="margin-top:8px;padding:6px 10px;background:rgba(255,255,255,0.6);border-radius:6px;font-size:11px;color:#475569;">
-            <strong>${lastComment.author_id ? 'Conducteur' : (lastComment.installer_name ?? 'Installateur')} :</strong>
-            ${lastComment.content}
+            <strong>${lastComment.author_id ? 'Conducteur' : escapeHtml(lastComment.installer_name ?? 'Installateur')} :</strong>
+            ${escapeHtml(lastComment.content)}
             <span style="color:#94a3b8;margin-left:8px;">${format(new Date(lastComment.created_at), 'dd/MM HH:mm')}</span>
           </div>
         ` : ''}
@@ -270,7 +271,7 @@ async function exportPdf(obs: any[], tokenData: any, projectName: string, admin:
 <html lang="fr">
 <head>
   <meta charset="UTF-8">
-  <title>Rapport — ${projectName}</title>
+  <title>Rapport — ${escapeHtml(projectName)}</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body { font-family: system-ui, -apple-system, sans-serif; font-size: 13px; color: #1e293b; background: #fff; padding: 32px; max-width: 860px; margin: 0 auto; }
@@ -293,9 +294,9 @@ async function exportPdf(obs: any[], tokenData: any, projectName: string, admin:
   </div>
 
   <div class="header">
-    <h1>Rapport de réserves — ${projectName}</h1>
+    <h1>Rapport de réserves — ${escapeHtml(projectName)}</h1>
     <p>
-      Installateur : <strong>${tokenData.name}</strong>${tokenData.company ? ` (${tokenData.company})` : ''}
+      Installateur : <strong>${escapeHtml(tokenData.name)}</strong>${tokenData.company ? ` (${escapeHtml(tokenData.company)})` : ''}
       &nbsp;·&nbsp; Généré le <strong>${format(new Date(), 'dd MMMM yyyy à HH:mm', { locale: fr })}</strong>
       &nbsp;·&nbsp; ${obs.length} observation${obs.length !== 1 ? 's' : ''} au total
     </p>
