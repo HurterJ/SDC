@@ -4,18 +4,19 @@ import Header from '@/components/layout/Header'
 import ObservationsListClient from '@/components/observations/ObservationsListClient'
 
 interface Props {
-  params: { projectId: string }
+  params: Promise<{ projectId: string }>
 }
 
 export default async function ObservationsPage({ params }: Props) {
-  const supabase = createClient()
+  const { projectId } = await params
+  const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
   const { data: project } = await supabase
     .from('projects')
     .select('id, name, owner_id')
-    .eq('id', params.projectId)
+    .eq('id', projectId)
     .single()
 
   if (!project) notFound()
@@ -23,13 +24,13 @@ export default async function ObservationsPage({ params }: Props) {
   const { data: observations } = await supabase
     .from('observations')
     .select('*, observation_photos(id, file_url)')
-    .eq('project_id', params.projectId)
+    .eq('project_id', projectId)
     .order('created_at', { ascending: false })
 
   const { data: member } = await supabase
     .from('project_members')
     .select('role')
-    .eq('project_id', params.projectId)
+    .eq('project_id', projectId)
     .eq('user_id', user.id)
     .single()
 
@@ -44,7 +45,7 @@ export default async function ObservationsPage({ params }: Props) {
           observations={observations ?? []}
           userId={user.id}
           role={role}
-          projectId={params.projectId}
+          projectId={projectId}
           projectName={project.name}
         />
       </main>

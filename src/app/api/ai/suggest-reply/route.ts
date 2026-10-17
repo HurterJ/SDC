@@ -11,7 +11,7 @@ export async function POST(req: NextRequest) {
   if (!observation_title) return NextResponse.json({ error: 'Missing observation' }, { status: 400 })
 
   // Route publique (page installateur sans session) : il faut une session ou un lien installateur valide
-  const { data: { user } } = await createClient().auth.getUser()
+  const { data: { user } } = await (await createClient()).auth.getUser()
   if (!user) {
     const installer = await getInstallerToken(createAdminClient(), token)
     if (!installer || installer.role !== 'installateur') {

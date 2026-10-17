@@ -6,7 +6,7 @@ interface HeaderProps {
 }
 
 export default async function Header({ title }: HeaderProps) {
-  const supabase = createClient()
+  const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
 
   let profile = null

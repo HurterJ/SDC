@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback } from 'react'
+import { use, useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { useDropzone } from 'react-dropzone'
 import { createClient } from '@/lib/supabase/client'
@@ -8,7 +8,8 @@ import { ArrowLeft, Upload, File, Loader2, X } from 'lucide-react'
 import Link from 'next/link'
 import { v4 as uuidv4 } from 'uuid'
 
-export default function NewPlanPage({ params }: { params: { projectId: string } }) {
+export default function NewPlanPage({ params }: { params: Promise<{ projectId: string }> }) {
+  const { projectId } = use(params)
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
   const [file, setFile] = useState<File | null>(null)
@@ -38,7 +39,7 @@ export default function NewPlanPage({ params }: { params: { projectId: string } 
     setError(null)
 
     const ext = file.name.split('.').pop()
-    const path = `${params.projectId}/${uuidv4()}.${ext}`
+    const path = `${projectId}/${uuidv4()}.${ext}`
 
     const { error: uploadError } = await supabase.storage
       .from('plans')
@@ -56,7 +57,7 @@ export default function NewPlanPage({ params }: { params: { projectId: string } 
     const { data: plan, error: insertError } = await supabase
       .from('plans')
       .insert({
-        project_id: params.projectId,
+        project_id: projectId,
         name,
         description: description || null,
         file_url: urlData.publicUrl,
@@ -69,7 +70,7 @@ export default function NewPlanPage({ params }: { params: { projectId: string } 
     if (insertError) {
       setError(`Erreur : ${insertError.message}`)
     } else {
-      router.push(`/projects/${params.projectId}/plans/${plan.id}`)
+      router.push(`/projects/${projectId}/plans/${plan.id}`)
     }
     setLoading(false)
   }
@@ -77,7 +78,7 @@ export default function NewPlanPage({ params }: { params: { projectId: string } 
   return (
     <div className="flex flex-col h-full overflow-hidden">
       <div className="flex items-center gap-4 px-6 py-3 bg-white border-b border-slate-200">
-        <Link href={`/projects/${params.projectId}`} className="p-1.5 hover:bg-slate-100 rounded-lg">
+        <Link href={`/projects/${projectId}`} className="p-1.5 hover:bg-slate-100 rounded-lg">
           <ArrowLeft className="w-5 h-5 text-slate-600" />
         </Link>
         <h1 className="font-semibold text-slate-800">Ajouter un plan</h1>
@@ -148,7 +149,7 @@ export default function NewPlanPage({ params }: { params: { projectId: string } 
 
           <div className="flex gap-3">
             <Link
-              href={`/projects/${params.projectId}`}
+              href={`/projects/${projectId}`}
               className="flex-1 py-2.5 border border-slate-200 rounded-lg text-center text-sm font-medium text-slate-600 hover:bg-slate-50 transition-colors"
             >
               Annuler

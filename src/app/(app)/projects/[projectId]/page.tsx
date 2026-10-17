@@ -5,18 +5,19 @@ import Link from 'next/link'
 import { Map, ListChecks, Users, Plus, ChevronRight } from 'lucide-react'
 
 interface Props {
-  params: { projectId: string }
+  params: Promise<{ projectId: string }>
 }
 
 export default async function ProjectPage({ params }: Props) {
-  const supabase = createClient()
+  const { projectId } = await params
+  const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
   const { data: project } = await supabase
     .from('projects')
     .select('*')
-    .eq('id', params.projectId)
+    .eq('id', projectId)
     .single()
 
   if (!project) notFound()
@@ -24,13 +25,13 @@ export default async function ProjectPage({ params }: Props) {
   const { data: plans } = await supabase
     .from('plans')
     .select('id, name, created_at')
-    .eq('project_id', params.projectId)
+    .eq('project_id', projectId)
     .order('created_at', { ascending: false })
 
   const { data: observations } = await supabase
     .from('observations')
     .select('id, status')
-    .eq('project_id', params.projectId)
+    .eq('project_id', projectId)
 
   const open = observations?.filter((o) => o.status === 'ouverte').length ?? 0
   const inProgress = observations?.filter((o) => o.status === 'en_cours').length ?? 0
@@ -63,7 +64,7 @@ export default async function ProjectPage({ params }: Props) {
         {/* Navigation cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
           <Link
-            href={`/projects/${params.projectId}/observations`}
+            href={`/projects/${projectId}/observations`}
             className="bg-white border border-slate-200 rounded-xl p-5 hover:shadow-md hover:border-blue-200 transition-all flex items-center gap-4"
           >
             <div className="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center">
@@ -77,7 +78,7 @@ export default async function ProjectPage({ params }: Props) {
           </Link>
 
           <Link
-            href={`/projects/${params.projectId}/members`}
+            href={`/projects/${projectId}/members`}
             className="bg-white border border-slate-200 rounded-xl p-5 hover:shadow-md hover:border-blue-200 transition-all flex items-center gap-4"
           >
             <div className="w-12 h-12 bg-purple-100 rounded-xl flex items-center justify-center">
@@ -100,7 +101,7 @@ export default async function ProjectPage({ params }: Props) {
               <span className="bg-slate-100 text-slate-600 text-xs px-2 py-0.5 rounded-full">{plans?.length ?? 0}</span>
             </div>
             <Link
-              href={`/projects/${params.projectId}/plans/new`}
+              href={`/projects/${projectId}/plans/new`}
               className="inline-flex items-center gap-1.5 text-sm text-blue-600 hover:text-blue-700 font-medium"
             >
               <Plus className="w-4 h-4" />
@@ -119,7 +120,7 @@ export default async function ProjectPage({ params }: Props) {
               {plans.map((plan) => (
                 <li key={plan.id}>
                   <Link
-                    href={`/projects/${params.projectId}/plans/${plan.id}`}
+                    href={`/projects/${projectId}/plans/${plan.id}`}
                     className="flex items-center gap-4 px-6 py-4 hover:bg-slate-50 transition-colors"
                   >
                     <div className="w-9 h-9 bg-slate-100 rounded-lg flex items-center justify-center">

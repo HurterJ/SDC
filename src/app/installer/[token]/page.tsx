@@ -4,18 +4,19 @@ import { notFound } from 'next/navigation'
 import InstallerView from '@/components/installer/InstallerView'
 
 interface Props {
-  params: { token: string }
+  params: Promise<{ token: string }>
 }
 
 // L'installateur n'a pas de session : tout est chargé ici avec la clé service role,
 // une fois le token secret vérifié. Aucune lecture anonyme de la base n'est nécessaire.
 export default async function InstallerPage({ params }: Props) {
+  const { token } = await params
   const supabase = createAdminClient()
 
   const { data: tokenData } = await supabase
     .from('installer_tokens')
     .select('id, project_id, name, company, role, expires_at, projects(id, name, description)')
-    .eq('token', params.token)
+    .eq('token', token)
     .eq('is_active', true)
     .maybeSingle()
 
@@ -83,7 +84,7 @@ export default async function InstallerPage({ params }: Props) {
       observations={obsWithSignedUrls}
       plans={plans ?? []}
       lastComments={lastCommentsMap}
-      tokenString={params.token}
+      tokenString={token}
     />
   )
 }

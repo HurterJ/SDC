@@ -6,7 +6,7 @@ import Header from '@/components/layout/Header'
 import ProjectsClient from '@/components/projects/ProjectsClient'
 
 export default async function ProjectsPage() {
-  const supabase = createClient()
+  const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
