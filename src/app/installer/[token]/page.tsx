@@ -1,5 +1,5 @@
-import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import type { InstallerToken } from '@/lib/installer/token'
 import { notFound } from 'next/navigation'
 import InstallerView from '@/components/installer/InstallerView'
 
@@ -7,15 +7,17 @@ interface Props {
   params: { token: string }
 }
 
+// L'installateur n'a pas de session : tout est chargé ici avec la clé service role,
+// une fois le token secret vérifié. Aucune lecture anonyme de la base n'est nécessaire.
 export default async function InstallerPage({ params }: Props) {
-  const supabase = createClient()
+  const supabase = createAdminClient()
 
   const { data: tokenData } = await supabase
     .from('installer_tokens')
-    .select('*, projects(id, name, description)')
+    .select('id, project_id, name, company, role, expires_at, projects(id, name, description)')
     .eq('token', params.token)
     .eq('is_active', true)
-    .single()
+    .maybeSingle()
 
   if (!tokenData) notFound()
 
@@ -44,14 +46,13 @@ export default async function InstallerPage({ params }: Props) {
   ])
 
   // Générer des URLs signées pour toutes les photos (bucket privé)
-  const admin = createAdminClient()
   const obsWithSignedUrls = await Promise.all(
     (observations ?? []).map(async (obs: any) => {
       if (!obs.observation_photos?.length) return obs
       const photos = await Promise.all(
         obs.observation_photos.map(async (p: any) => {
           if (!p.file_path) return p
-          const { data, error } = await admin.storage.from('photos').createSignedUrl(p.file_path, 3600)
+          const { data, error } = await supabase.storage.from('photos').createSignedUrl(p.file_path, 3600)
           if (error) console.error('[installer] signed URL error:', error.message, 'path:', p.file_path)
           return { ...p, file_url: data?.signedUrl ?? null }
         })
@@ -78,7 +79,7 @@ export default async function InstallerPage({ params }: Props) {
 
   return (
     <InstallerView
-      token={tokenData}
+      token={tokenData as unknown as InstallerToken}
       observations={obsWithSignedUrls}
       plans={plans ?? []}
       lastComments={lastCommentsMap}

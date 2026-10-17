@@ -1,30 +1,37 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { getInstallerToken, isObservationInProject } from '@/lib/installer/token'
 import { v4 as uuidv4 } from 'uuid'
+
+const IMAGE_EXTENSIONS: Record<string, string> = {
+  'image/webp': 'webp',
+  'image/jpeg': 'jpg',
+  'image/png': 'png',
+  'image/heic': 'heic',
+  'image/heif': 'heif',
+}
 
 export async function POST(req: NextRequest) {
   const formData = await req.formData()
   const file = formData.get('file') as File | null
   const observation_id = formData.get('observation_id') as string
-  const installer_token_id = formData.get('installer_token_id') as string
+  const token = formData.get('token') as string
 
-  if (!file || !observation_id || !installer_token_id) {
+  if (!file || !observation_id || !token) {
     return NextResponse.json({ error: 'Missing fields' }, { status: 400 })
   }
 
+  const ext = IMAGE_EXTENSIONS[file.type]
+  if (!ext) return NextResponse.json({ error: 'Unsupported file type' }, { status: 400 })
+
   const admin = createAdminClient()
 
-  // Valider le token
-  const { data: token } = await admin
-    .from('installer_tokens')
-    .select('id, is_active')
-    .eq('id', installer_token_id)
-    .eq('is_active', true)
-    .single()
+  const installer = await getInstallerToken(admin, token)
+  if (!installer) return NextResponse.json({ error: 'Invalid token' }, { status: 401 })
+  if (!(await isObservationInProject(admin, observation_id, installer.project_id))) {
+    return NextResponse.json({ error: 'Not found' }, { status: 404 })
+  }
 
-  if (!token) return NextResponse.json({ error: 'Invalid token' }, { status: 401 })
-
-  const ext = file.type === 'image/webp' ? 'webp' : file.name.split('.').pop() ?? 'jpg'
   const path = `${observation_id}/${uuidv4()}.${ext}`
   const buffer = Buffer.from(await file.arrayBuffer())
 

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { getInstallerToken } from '@/lib/installer/token'
 import { format } from 'date-fns'
 import { fr } from 'date-fns/locale'
 
@@ -32,13 +33,7 @@ export async function GET(req: NextRequest) {
 
   const admin = createAdminClient()
 
-  const { data: tokenData } = await admin
-    .from('installer_tokens')
-    .select('*, projects(id, name)')
-    .eq('token', tokenStr)
-    .eq('is_active', true)
-    .single()
-
+  const tokenData = await getInstallerToken(admin, tokenStr)
   if (!tokenData) return new NextResponse('Invalid token', { status: 401 })
 
   const { data: rawObs } = await admin

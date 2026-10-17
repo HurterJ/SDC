@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useRef } from 'react'
 import dynamic from 'next/dynamic'
-import { createClient } from '@/lib/supabase/client'
 import { Observation, ObservationStatus, ObservationComment } from '@/types'
 import { STATUS_LABELS, STATUS_COLORS, STATUS_DOT_COLORS, PRIORITY_LABELS } from '@/lib/utils/status'
 import { compressImage } from '@/lib/utils/image'
@@ -70,7 +69,6 @@ export default function InstallerView({ token, observations: initial, plans, las
   const [exporting, setExporting] = useState(false)
   const [exportMenuOpen, setExportMenuOpen] = useState(false)
 
-  const supabase = createClient()
   const mobile = typeof navigator !== 'undefined' && /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent)
   const STORAGE_KEY = `sitesuivi_seen_${token.id}`
 
@@ -134,22 +132,22 @@ export default function InstallerView({ token, observations: initial, plans, las
     const res = await fetch('/api/installer/status', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ observation_id: obsId, installer_token_id: token.id, status }),
+      body: JSON.stringify({ observation_id: obsId, token: tokenString, status }),
     })
     if (res.ok) {
+      // La ligne renvoyée n'a pas les photos : on fusionne pour les garder
       const data = await res.json()
-      setObservations((prev) => prev.map((o) => (o.id === obsId ? data as Observation : o)))
-      if (selectedObs?.id === obsId) setSelectedObs(data as Observation)
+      setObservations((prev) => prev.map((o) => (o.id === obsId ? { ...o, ...data } as Observation : o)))
+      if (selectedObs?.id === obsId) setSelectedObs({ ...selectedObs, ...data } as Observation)
     }
   }
 
   async function loadComments(obsId: string) {
-    const { data } = await supabase
-      .from('observation_comments')
-      .select('*')
-      .eq('observation_id', obsId)
-      .order('created_at', { ascending: true })
-    if (data) setCommentsList((prev) => ({ ...prev, [obsId]: data as ObservationComment[] }))
+    const params = new URLSearchParams({ token: tokenString, observation_id: obsId })
+    const res = await fetch(`/api/installer/comment?${params}`)
+    if (!res.ok) return
+    const data = await res.json()
+    setCommentsList((prev) => ({ ...prev, [obsId]: data as ObservationComment[] }))
   }
 
   function handlePhotoSelect(obsId: string, file: File) {
@@ -178,7 +176,7 @@ export default function InstallerView({ token, observations: initial, plans, las
         const fd = new FormData()
         fd.append('file', compressed)
         fd.append('observation_id', obsId)
-        fd.append('installer_token_id', token.id)
+        fd.append('token', tokenString)
         const photoRes = await fetch('/api/installer/photo', { method: 'POST', body: fd })
         if (photoRes.ok) {
           const { file_url } = await photoRes.json()
@@ -190,8 +188,7 @@ export default function InstallerView({ token, observations: initial, plans, las
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           observation_id: obsId,
-          installer_token_id: token.id,
-          installer_name: token.name,
+          token: tokenString,
           content: content || '',
           photo_url: photoUrl,
         }),
@@ -221,6 +218,7 @@ export default function InstallerView({ token, observations: initial, plans, las
           observation_title: obs.title,
           observation_description: obs.description,
           comments: commentsList[obs.id] ?? [],
+          token: tokenString,
         }),
       })
       if (res.ok) {

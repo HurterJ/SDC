@@ -1,11 +1,23 @@
 import { NextRequest, NextResponse } from 'next/server'
 import Anthropic from '@anthropic-ai/sdk'
+import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
+import { getInstallerToken } from '@/lib/installer/token'
 
 const client = new Anthropic()
 
 export async function POST(req: NextRequest) {
-  const { observation_title, observation_description, comments } = await req.json()
+  const { observation_title, observation_description, comments, token } = await req.json()
   if (!observation_title) return NextResponse.json({ error: 'Missing observation' }, { status: 400 })
+
+  // Route publique (page installateur sans session) : il faut une session ou un lien installateur valide
+  const { data: { user } } = await createClient().auth.getUser()
+  if (!user) {
+    const installer = await getInstallerToken(createAdminClient(), token)
+    if (!installer || installer.role !== 'installateur') {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+  }
 
   const commentsText = (comments ?? []).length > 0
     ? (comments as { author_id?: string; installer_name?: string; content: string }[])

@@ -1,29 +1,29 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { getInstallerToken, isObservationInProject } from '@/lib/installer/token'
+
+// Statuts qu'un installateur peut poser (Validée reste réservée au conducteur)
+const INSTALLER_STATUSES = ['resolue', 'contestee']
 
 export async function POST(req: NextRequest) {
-  const { observation_id, installer_token_id, status } = await req.json()
+  const { observation_id, token, status } = await req.json()
 
-  if (!observation_id || !installer_token_id || !status) {
+  if (!observation_id || !token || !status) {
     return NextResponse.json({ error: 'Missing fields' }, { status: 400 })
+  }
+  if (!INSTALLER_STATUSES.includes(status)) {
+    return NextResponse.json({ error: 'Invalid status' }, { status: 400 })
   }
 
   const admin = createAdminClient()
 
-  // Valider le token actif
-  const { data: token } = await admin
-    .from('installer_tokens')
-    .select('id, is_active, role')
-    .eq('id', installer_token_id)
-    .eq('is_active', true)
-    .single()
-
-  // Valider le token actif (role installateur ou colonne absente = autorisé)
-  if (!token) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const installer = await getInstallerToken(admin, token)
+  if (!installer) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  if (installer.role !== 'installateur') {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
-  if (token.role && token.role !== 'installateur') {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  if (!(await isObservationInProject(admin, observation_id, installer.project_id))) {
+    return NextResponse.json({ error: 'Not found' }, { status: 404 })
   }
 
   const update: Record<string, unknown> = { status }

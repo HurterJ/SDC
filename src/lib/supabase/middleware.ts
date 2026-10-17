@@ -31,11 +31,15 @@ export async function updateSession(request: NextRequest) {
 
   const pathname = request.nextUrl.pathname
 
-  // Public paths that don't require auth
-  const publicPaths = ['/login', '/installer']
+  // Public paths that don't require auth.
+  // Les routes installateur et la suggestion IA vérifient elles-mêmes le token installateur.
+  const publicPaths = ['/login', '/installer', '/api/installer/', '/api/ai/suggest-reply', '/api/icon']
   const isPublic = publicPaths.some((p) => pathname.startsWith(p))
 
   if (!user && !isPublic) {
+    if (pathname.startsWith('/api/')) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
     const url = request.nextUrl.clone()
     url.pathname = '/login'
     return NextResponse.redirect(url)
