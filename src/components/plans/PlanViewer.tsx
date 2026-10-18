@@ -4,7 +4,8 @@ import { useState, useRef, useCallback } from 'react'
 import { TransformWrapper, TransformComponent } from 'react-zoom-pan-pinch'
 import { Observation } from '@/types'
 import { PIN_COLORS, STATUS_LABELS } from '@/lib/utils/status'
-import { ZoomIn, ZoomOut, Maximize2, ExternalLink } from 'lucide-react'
+import { ZoomIn, ZoomOut, Maximize2, ExternalLink, Loader2 } from 'lucide-react'
+import { usePdfPageImage } from './usePdfPageImage'
 
 interface Props {
   planUrl: string
@@ -34,9 +35,19 @@ export default function PlanViewer({ planUrl, observations, canAddPin, onPinClic
     [canAddPin, onMapClick]
   )
 
-  // Pour les PDFs : on utilise le viewer natif du navigateur via iframe.
-  // Les pins ne sont pas supportés sur PDF (le navigateur gère le zoom nativement).
-  if (isPdf) {
+  // PDF : la première page est rendue en image par pdf.js, puis affichée comme un plan image
+  // (zoom, pins, double-clic). En cas d'échec, on retombe sur le lecteur PDF du navigateur.
+  const pdf = usePdfPageImage(isPdf ? planUrl : null)
+
+  if (isPdf && pdf.status !== 'ready') {
+    if (pdf.status !== 'error') {
+      return (
+        <div className="w-full h-full bg-slate-800 rounded-xl flex flex-col items-center justify-center gap-3 text-white">
+          <Loader2 className="w-8 h-8 animate-spin text-blue-300" aria-hidden="true" />
+          <p className="text-sm">Chargement du plan PDF…</p>
+        </div>
+      )
+    }
     return (
       <div ref={wrapperRef} className="relative w-full h-full bg-slate-800 rounded-xl overflow-hidden">
         <iframe
@@ -54,18 +65,18 @@ export default function PlanViewer({ planUrl, observations, canAddPin, onPinClic
         >
           <ExternalLink className="w-4 h-4 text-slate-700" />
         </a>
-        {observations.length > 0 && (
-          <div className="absolute bottom-4 left-4 z-20 bg-white/90 backdrop-blur-sm rounded-lg shadow-sm px-3 py-2">
-            <p className="text-xs text-slate-600">
-              {observations.length} observation{observations.length !== 1 ? 's' : ''} — gestion via la vue liste
-            </p>
-          </div>
-        )}
+        <div className="absolute bottom-4 left-4 right-16 z-20 bg-white/90 backdrop-blur-sm rounded-lg shadow-sm px-3 py-2">
+          <p className="text-xs text-slate-700">
+            Ce PDF n&apos;a pas pu être préparé pour les pins : les observations se gèrent depuis la vue liste.
+          </p>
+        </div>
       </div>
     )
   }
 
-  // Images : on garde le zoom/pan interactif + les pins
+  const imageUrl = isPdf ? pdf.src! : planUrl
+
+  // Zoom/pan interactif + pins (images, et PDF rendus en image)
   return (
     <div ref={wrapperRef} className="relative w-full h-full bg-slate-800 rounded-xl overflow-hidden">
       <TransformWrapper
@@ -110,7 +121,7 @@ export default function PlanViewer({ planUrl, observations, canAddPin, onPinClic
                 className={`relative w-full h-full flex items-center justify-center ${canAddPin ? 'cursor-crosshair' : ''}`}
                 onDoubleClick={handleDoubleClick}
               >
-                <img src={planUrl} alt="Plan du chantier"
+                <img src={imageUrl} alt="Plan du chantier"
                   className="max-w-full max-h-full object-contain select-none shadow-2xl"
                   draggable={false} />
 
