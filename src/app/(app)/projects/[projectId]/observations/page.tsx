@@ -1,7 +1,10 @@
+import type { Metadata } from 'next'
 import { createClient } from '@/lib/supabase/server'
 import { redirect, notFound } from 'next/navigation'
 import Header from '@/components/layout/Header'
 import ObservationsListClient from '@/components/observations/ObservationsListClient'
+
+export const metadata: Metadata = { title: 'Observations' }
 
 interface Props {
   params: Promise<{ projectId: string }>

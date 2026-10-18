@@ -2,13 +2,15 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { STATUS_LABELS, PRIORITY_LABELS } from '@/lib/utils/status'
+import { MINUTE, rateLimit } from '@/lib/api/rate-limit'
+import { LIMITS } from '@/lib/validation'
 
 export async function GET(request: NextRequest) {
   const { searchParams } = request.nextUrl
   const projectId = searchParams.get('projectId')
   const format = searchParams.get('format') // 'excel' | 'pdf'
-  const title = searchParams.get('title') ?? ''
-  const subtitle = searchParams.get('subtitle') ?? ''
+  const title = (searchParams.get('title') ?? '').slice(0, LIMITS.exportTitle)
+  const subtitle = (searchParams.get('subtitle') ?? '').slice(0, LIMITS.exportTitle)
   const filterStatus = searchParams.get('filterStatus') ?? ''
   const showPhotos = searchParams.get('showPhotos') !== '0'
   const colorMode = searchParams.get('colorMode') !== '0'
@@ -16,10 +18,16 @@ export async function GET(request: NextRequest) {
   if (!projectId || !format) {
     return NextResponse.json({ error: 'Missing params' }, { status: 400 })
   }
+  if (format !== 'excel' && format !== 'pdf') {
+    return NextResponse.json({ error: 'Invalid format' }, { status: 400 })
+  }
 
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+  const limited = rateLimit(request, 'export', user.id, { limit: 10, windowMs: MINUTE })
+  if (limited) return limited
 
   const { data: project } = await supabase
     .from('projects')

@@ -1,5 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import Anthropic from '@anthropic-ai/sdk'
+import { badRequest, cleanText, readJson } from '@/lib/api/request'
+import { MINUTE, rateLimit } from '@/lib/api/rate-limit'
+import { LIMITS } from '@/lib/validation'
 
 const client = new Anthropic()
 
@@ -9,8 +12,15 @@ const CATEGORIES = [
 ]
 
 export async function POST(req: NextRequest) {
-  const { raw } = await req.json()
-  if (!raw?.trim()) return NextResponse.json({ error: 'Missing input' }, { status: 400 })
+  const body = await readJson(req)
+  if (!body) return badRequest('Invalid body')
+  const raw = cleanText(body.raw, LIMITS.aiInput)
+  if (raw === null) return badRequest(`Description trop longue (${LIMITS.aiInput} caractères maximum).`)
+  if (!raw) return NextResponse.json({ error: 'Missing input' }, { status: 400 })
+
+  // La session est vérifiée par le middleware ; la limite porte sur l'adresse IP
+  const limited = rateLimit(req, 'ai-generate', null, { limit: 20, windowMs: 10 * MINUTE })
+  if (limited) return limited
 
   const message = await client.messages.create({
     model: 'claude-haiku-4-5-20251001',

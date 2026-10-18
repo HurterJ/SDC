@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { getInstallerToken, isObservationInProject } from '@/lib/installer/token'
+import { badRequest, cleanText, readJson } from '@/lib/api/request'
+import { MINUTE, rateLimit } from '@/lib/api/rate-limit'
+import { LIMITS } from '@/lib/validation'
 
 // Liste des commentaires d'une observation (la page installateur n'a pas de session)
 export async function GET(req: NextRequest) {
@@ -30,11 +33,23 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
-  const { observation_id, token, content, photo_url } = await req.json()
+  const body = await readJson(req)
+  if (!body) return badRequest('Invalid body')
+  const { observation_id, token, photo_url } = body
+  const content = cleanText(body.content ?? '', LIMITS.comment)
 
-  if (!observation_id || !token) {
+  if (!observation_id || typeof token !== 'string' || !token) {
     return NextResponse.json({ error: 'Missing fields' }, { status: 400 })
   }
+  if (content === null) return badRequest(`Commentaire trop long (${LIMITS.comment} caractères maximum).`)
+
+  // Seules les photos déposées par /api/installer/photo sont acceptées
+  const photoPrefix = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/sign/photos/`
+  const photo = typeof photo_url === 'string' && photo_url.startsWith(photoPrefix) ? photo_url : null
+  if (!content && !photo) return badRequest('Le commentaire est vide.')
+
+  const limited = rateLimit(req, 'installer-comment', token, { limit: 30, windowMs: 5 * MINUTE })
+  if (limited) return limited
 
   const admin = createAdminClient()
 
@@ -49,11 +64,9 @@ export async function POST(req: NextRequest) {
     observation_id,
     installer_token_id: installer.id,
     installer_name: installer.name,
-    content: content || '',
+    content,
   }
-  // Seules les photos déposées par /api/installer/photo sont acceptées
-  const photoPrefix = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/sign/photos/`
-  if (typeof photo_url === 'string' && photo_url.startsWith(photoPrefix)) record.photo_url = photo_url
+  if (photo) record.photo_url = photo
 
   const { data, error } = await admin
     .from('observation_comments')

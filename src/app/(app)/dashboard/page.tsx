@@ -1,10 +1,13 @@
 export const dynamic = 'force-dynamic'
 
+import type { Metadata } from 'next'
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import Header from '@/components/layout/Header'
 import { FolderOpen, Plus, ChevronRight } from 'lucide-react'
+
+export const metadata: Metadata = { title: 'Tableau de bord' }
 
 export default async function DashboardPage() {
   const supabase = await createClient()
@@ -34,7 +37,7 @@ export default async function DashboardPage() {
             <div className="flex flex-col items-center py-16 text-center">
               <FolderOpen className="w-12 h-12 text-slate-300 mb-3" />
               <p className="text-slate-500 font-medium">Aucun projet</p>
-              <p className="text-slate-400 text-sm mt-1 mb-4">
+              <p className="text-slate-500 text-sm mt-1 mb-4">
                 Créez votre premier projet pour commencer
               </p>
               <Link
@@ -58,11 +61,11 @@ export default async function DashboardPage() {
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="font-medium text-slate-800 truncate">{project.name}</p>
-                      <p className="text-xs text-slate-400 mt-0.5">
+                      <p className="text-xs text-slate-500 mt-0.5">
                         Mis à jour le {new Date(project.updated_at).toLocaleDateString('fr-FR')}
                       </p>
                     </div>
-                    <ChevronRight className="w-4 h-4 text-slate-400 shrink-0" />
+                    <ChevronRight className="w-4 h-4 text-slate-500 shrink-0" />
                   </Link>
                 </li>
               ))}

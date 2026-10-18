@@ -2,9 +2,11 @@
 
 import { useState, useEffect, useRef } from 'react'
 import dynamic from 'next/dynamic'
+import Link from 'next/link'
 import { Observation, ObservationStatus, ObservationComment } from '@/types'
 import { STATUS_LABELS, STATUS_COLORS, STATUS_DOT_COLORS, PRIORITY_LABELS } from '@/lib/utils/status'
 import { compressImage } from '@/lib/utils/image'
+import { LIMITS } from '@/lib/validation'
 import {
   Building2, CheckCircle, AlertTriangle, MessageSquare, Send, Loader2,
   ChevronDown, ChevronUp, Map, List, X, User, Camera, ImageIcon,
@@ -286,13 +288,13 @@ export default function InstallerView({ token, observations: initial, plans, las
               <span className={`text-xs px-2 py-0.5 rounded-full border ${STATUS_COLORS[obs.status]}`}>
                 {STATUS_LABELS[obs.status]}
               </span>
-              <span className="text-xs text-slate-400">{PRIORITY_LABELS[obs.priority]}</span>
-              <span className="text-xs text-slate-300">
+              <span className="text-xs text-slate-500">{PRIORITY_LABELS[obs.priority]}</span>
+              <span className="text-xs text-slate-500">
                 {format(new Date(obs.created_at), 'dd MMM yyyy', { locale: fr })}
               </span>
             </div>
             {lastComment && expanded !== obs.id && (
-              <p className="text-xs text-slate-400 mt-1.5 truncate flex items-center gap-1">
+              <p className="text-xs text-slate-500 mt-1.5 truncate flex items-center gap-1">
                 <MessageSquare className="w-3 h-3 shrink-0" />
                 <span className="font-medium">
                   {lastComment.author_id ? 'Conducteur' : (lastComment.installer_name ?? 'Installateur')} :
@@ -302,15 +304,15 @@ export default function InstallerView({ token, observations: initial, plans, las
             )}
           </div>
           {expanded === obs.id
-            ? <ChevronUp className="w-4 h-4 text-slate-400 shrink-0" />
-            : <ChevronDown className="w-4 h-4 text-slate-400 shrink-0" />}
+            ? <ChevronUp className="w-4 h-4 text-slate-500 shrink-0" />
+            : <ChevronDown className="w-4 h-4 text-slate-500 shrink-0" />}
         </button>
 
         {expanded === obs.id && (
           <div className="border-t border-slate-100 p-4 space-y-4">
             {obs.description && <p className="text-sm text-slate-600">{obs.description}</p>}
             {obs.due_date && (
-              <p className="text-xs text-orange-500">
+              <p className="text-xs text-orange-700">
                 Échéance : {format(new Date(obs.due_date), 'dd MMMM yyyy', { locale: fr })}
               </p>
             )}
@@ -320,9 +322,9 @@ export default function InstallerView({ token, observations: initial, plans, las
                 <p className="text-xs font-medium text-slate-500 mb-2">Photos</p>
                 <div className="grid grid-cols-3 gap-2">
                   {(obs as any).observation_photos.filter((p: any) => p.file_url).map((p: any) => (
-                    <button key={p.id} onClick={() => setLightbox(p.file_url)}
+                    <button key={p.id} type="button" onClick={() => setLightbox(p.file_url)} aria-label="Agrandir la photo"
                       className="aspect-square rounded-lg overflow-hidden bg-slate-100 hover:opacity-90 transition-opacity">
-                      <img src={p.file_url} alt="Photo" className="w-full h-full object-cover" />
+                      <img src={p.file_url} alt={`Photo de la réserve « ${obs.title} »`} className="w-full h-full object-cover" />
                     </button>
                   ))}
                 </div>
@@ -333,13 +335,13 @@ export default function InstallerView({ token, observations: initial, plans, las
               <div className="flex gap-2">
                 <button onClick={() => updateStatus(obs.id, 'resolue')}
                   disabled={obs.status === 'resolue' || obs.status === 'validee'}
-                  className="flex-1 flex items-center justify-center gap-1.5 py-2 bg-green-600 text-white rounded-lg text-sm hover:bg-green-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors">
+                  className="flex-1 flex items-center justify-center gap-1.5 py-2 bg-green-700 text-white rounded-lg text-sm hover:bg-green-800 disabled:opacity-40 disabled:cursor-not-allowed transition-colors">
                   <CheckCircle className="w-4 h-4" />
                   Marquer résolue
                 </button>
                 <button onClick={() => updateStatus(obs.id, 'contestee')}
                   disabled={obs.status === 'contestee'}
-                  className="flex-1 flex items-center justify-center gap-1.5 py-2 bg-yellow-500 text-white rounded-lg text-sm hover:bg-yellow-600 disabled:opacity-40 disabled:cursor-not-allowed transition-colors">
+                  className="flex-1 flex items-center justify-center gap-1.5 py-2 bg-yellow-400 text-yellow-950 rounded-lg text-sm hover:bg-yellow-500 disabled:opacity-40 disabled:cursor-not-allowed transition-colors">
                   <AlertTriangle className="w-4 h-4" />
                   Contester
                 </button>
@@ -357,15 +359,15 @@ export default function InstallerView({ token, observations: initial, plans, las
                   {(commentsList[obs.id] ?? []).map((c) => (
                     <div key={c.id} className={`rounded-lg p-2.5 ${c.author_id ? 'bg-blue-50 ml-4' : 'bg-slate-50 mr-4'}`}>
                       <div className="flex items-center gap-1 mb-0.5">
-                        <User className="w-3 h-3 text-slate-400" />
+                        <User className="w-3 h-3 text-slate-500" />
                         <span className="text-xs font-medium text-slate-500">
                           {c.author_id ? 'Conducteur' : (c.installer_name ?? 'Installateur')}
                         </span>
-                        <span className="text-xs text-slate-300 ml-auto">{format(new Date(c.created_at), 'dd/MM HH:mm')}</span>
+                        <span className="text-xs text-slate-500 ml-auto">{format(new Date(c.created_at), 'dd/MM HH:mm')}</span>
                       </div>
                       {c.content && <p className="text-sm text-slate-700">{c.content}</p>}
                       {(c as any).photo_url && (
-                        <img src={(c as any).photo_url} alt="Photo" className="mt-1.5 rounded-lg max-h-40 object-cover" />
+                        <img src={(c as any).photo_url} alt={`Photo jointe par ${c.author_id ? 'le conducteur' : (c.installer_name ?? "l'installateur")}`} className="mt-1.5 rounded-lg max-h-40 object-cover" />
                       )}
                     </div>
                   ))}
@@ -376,7 +378,7 @@ export default function InstallerView({ token, observations: initial, plans, las
                 <div className="mb-2">
                   {(suggestions[obs.id] ?? []).length > 0 ? (
                     <div className="space-y-1.5">
-                      <p className="text-xs text-violet-500 flex items-center gap-1">
+                      <p className="text-xs text-violet-700 flex items-center gap-1">
                         <Sparkles className="w-3 h-3" /> Suggestions IA
                       </p>
                       <div className="flex flex-wrap gap-1.5">
@@ -395,7 +397,7 @@ export default function InstallerView({ token, observations: initial, plans, las
                   ) : (
                     <button type="button" onClick={() => fetchSuggestions(obs)}
                       disabled={loadingSuggestions === obs.id}
-                      className="flex items-center gap-1.5 text-xs text-violet-500 hover:text-violet-700 disabled:opacity-50 transition-colors">
+                      className="flex items-center gap-1.5 text-xs text-violet-700 hover:text-violet-800 disabled:opacity-50 transition-colors">
                       {loadingSuggestions === obs.id
                         ? <Loader2 className="w-3 h-3 animate-spin" />
                         : <Sparkles className="w-3 h-3" />}
@@ -407,9 +409,9 @@ export default function InstallerView({ token, observations: initial, plans, las
 
               {photoPreview[obs.id] && (
                 <div className="relative inline-block mb-2">
-                  <img src={photoPreview[obs.id]!} alt="Aperçu" className="h-20 rounded-lg object-cover border border-slate-200" />
-                  <button onClick={() => removeAttachedPhoto(obs.id)}
-                    className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center">
+                  <img src={photoPreview[obs.id]!} alt="Aperçu de la photo à envoyer" className="h-20 rounded-lg object-cover border border-slate-200" />
+                  <button type="button" onClick={() => removeAttachedPhoto(obs.id)} aria-label="Retirer la photo jointe"
+                    className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-red-600 text-white rounded-full flex items-center justify-center">
                     <X className="w-3 h-3" />
                   </button>
                 </div>
@@ -426,7 +428,7 @@ export default function InstallerView({ token, observations: initial, plans, las
               />
 
               <div className="flex gap-2">
-                <input value={comments[obs.id] ?? ''}
+                <input value={comments[obs.id] ?? ''} aria-label="Votre commentaire" maxLength={LIMITS.comment}
                   onChange={(e) => setComments({ ...comments, [obs.id]: e.target.value })}
                   onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendComment(obs.id) } }}
                   placeholder="Votre commentaire..."
@@ -437,7 +439,7 @@ export default function InstallerView({ token, observations: initial, plans, las
                   className="p-2 border border-slate-200 text-slate-500 rounded-lg hover:border-blue-300 hover:text-blue-600 transition-colors" title="Joindre une photo">
                   {mobile ? <Camera className="w-4 h-4" /> : <ImageIcon className="w-4 h-4" />}
                 </button>
-                <button onClick={() => sendComment(obs.id)}
+                <button type="button" onClick={() => sendComment(obs.id)} aria-label="Envoyer le commentaire"
                   disabled={sending === obs.id || (!comments[obs.id]?.trim() && !attachedPhoto[obs.id])}
                   className="p-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors">
                   {sending === obs.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
@@ -462,7 +464,7 @@ export default function InstallerView({ token, observations: initial, plans, las
               </div>
               <div>
                 <h1 className="font-bold">SiteSuivi</h1>
-                <p className="text-slate-400 text-xs">Accès installateur</p>
+                <p className="text-slate-300 text-xs">Accès installateur</p>
               </div>
             </div>
             <div className="relative">
@@ -496,7 +498,7 @@ export default function InstallerView({ token, observations: initial, plans, las
             </div>
           </div>
           <h2 className="text-lg font-semibold">{token.projects?.name}</h2>
-          <p className="text-slate-400 text-xs mt-0.5">
+          <p className="text-slate-300 text-xs mt-0.5">
             {token.name}{token.company && ` — ${token.company}`}
           </p>
         </div>
@@ -538,11 +540,11 @@ export default function InstallerView({ token, observations: initial, plans, las
           </div>
           <div className="bg-red-50 border border-red-100 rounded-xl p-3 text-center">
             <p className="text-xl font-bold text-red-700">{openCount}</p>
-            <p className="text-xs text-red-600">Ouvertes</p>
+            <p className="text-xs text-red-700">Ouvertes</p>
           </div>
           <div className="bg-green-50 border border-green-100 rounded-xl p-3 text-center">
             <p className="text-xl font-bold text-green-700">{resolvedCount}</p>
-            <p className="text-xs text-green-600">Résolues</p>
+            <p className="text-xs text-green-700">Résolues</p>
           </div>
         </div>
 
@@ -554,14 +556,14 @@ export default function InstallerView({ token, observations: initial, plans, las
               <button
                 onClick={() => { setQuickFilter(!quickFilter); setFilterStatus('all') }}
                 className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium border transition-colors ${
-                  quickFilter ? 'bg-orange-500 text-white border-orange-500' : 'bg-white border-slate-200 text-slate-600 hover:border-orange-300'
+                  quickFilter ? 'bg-orange-700 text-white border-orange-700' : 'bg-white border-slate-200 text-slate-600 hover:border-orange-300'
                 }`}>
                 <Zap className="w-3.5 h-3.5" />
                 À traiter ({todoCount})
               </button>
 
               <div className="flex items-center gap-1.5 bg-white border border-slate-200 rounded-lg px-2.5 py-1.5">
-                <ArrowUpDown className="w-3.5 h-3.5 text-slate-400" />
+                <ArrowUpDown className="w-3.5 h-3.5 text-slate-500" />
                 <select value={sortBy} onChange={(e) => setSortBy(e.target.value as typeof sortBy)}
                   className="text-xs text-slate-700 bg-transparent focus:outline-hidden">
                   <option value="date_desc">Plus récentes</option>
@@ -573,7 +575,7 @@ export default function InstallerView({ token, observations: initial, plans, las
 
               {!quickFilter && (
                 <div className="flex items-center gap-1.5 bg-white border border-slate-200 rounded-lg px-2.5 py-1.5">
-                  <Filter className="w-3.5 h-3.5 text-slate-400" />
+                  <Filter className="w-3.5 h-3.5 text-slate-500" />
                   <select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value as typeof filterStatus)}
                     className="text-xs text-slate-700 bg-transparent focus:outline-hidden">
                     <option value="all">Tous ({observations.length})</option>
@@ -608,9 +610,9 @@ export default function InstallerView({ token, observations: initial, plans, las
               <div key={category || '__all'}>
                 {groupByCategory && (
                   <div className="flex items-center gap-2 py-2">
-                    <Tag className="w-3.5 h-3.5 text-slate-400" />
+                    <Tag className="w-3.5 h-3.5 text-slate-500" />
                     <span className="text-xs font-semibold text-slate-500 uppercase tracking-wide">{category}</span>
-                    <span className="text-xs text-slate-400">({items.length})</span>
+                    <span className="text-xs text-slate-500">({items.length})</span>
                     <div className="flex-1 h-px bg-slate-200" />
                   </div>
                 )}
@@ -621,7 +623,7 @@ export default function InstallerView({ token, observations: initial, plans, las
             ))}
 
             {displayedObs.length === 0 && (
-              <div className="text-center py-16 text-slate-400">
+              <div className="text-center py-16 text-slate-500">
                 <CheckCircle className="w-12 h-12 mx-auto mb-3 text-green-300" />
                 <p className="font-medium">
                   {quickFilter ? 'Aucune observation à traiter' : filterStatus !== 'all' ? 'Aucune observation dans ce filtre' : 'Aucune observation'}
@@ -651,18 +653,28 @@ export default function InstallerView({ token, observations: initial, plans, las
                 <PlanViewer planUrl={selectedPlan.file_url} observations={planObs} canAddPin={false} onPinClick={(obs) => setSelectedObs(obs)} />
               </div>
             )}
-            <p className="text-xs text-slate-400 text-center">
+            <p className="text-xs text-slate-500 text-center">
               {planObs.length} observation{planObs.length !== 1 ? 's' : ''} sur ce plan — cliquez sur un pin pour les détails
             </p>
           </div>
         )}
       </div>
 
+      <footer className="max-w-3xl mx-auto px-4 pb-8 pt-2 text-center text-xs text-slate-600">
+        <Link href="/confidentialite" className="hover:text-slate-900 hover:underline">
+          Confidentialité
+        </Link>
+        <span className="mx-2" aria-hidden="true">·</span>
+        <Link href="/conditions" className="hover:text-slate-900 hover:underline">
+          Conditions d&apos;utilisation
+        </Link>
+      </footer>
+
       {/* Lightbox */}
       {lightbox && (
         <div className="fixed inset-0 bg-black/85 z-100 flex items-center justify-center p-4" onClick={() => setLightbox(null)}>
-          <img src={lightbox} alt="Photo" className="max-w-full max-h-full object-contain rounded-lg" />
-          <button onClick={() => setLightbox(null)} className="absolute top-4 right-4 p-2 bg-white/10 rounded-full hover:bg-white/20 transition-colors">
+          <img src={lightbox} alt="Photo agrandie" className="max-w-full max-h-full object-contain rounded-lg" />
+          <button type="button" onClick={() => setLightbox(null)} aria-label="Fermer" className="absolute top-4 right-4 p-2 bg-white/10 rounded-full hover:bg-white/20 transition-colors">
             <X className="w-6 h-6 text-white" />
           </button>
         </div>
@@ -679,14 +691,14 @@ export default function InstallerView({ token, observations: initial, plans, las
                   {STATUS_LABELS[selectedObs.status]}
                 </span>
               </div>
-              <button onClick={() => setSelectedObs(null)} className="p-1 hover:bg-slate-100 rounded-lg">
+              <button type="button" onClick={() => setSelectedObs(null)} aria-label="Fermer" className="p-1 hover:bg-slate-100 rounded-lg">
                 <X className="w-5 h-5 text-slate-500" />
               </button>
             </div>
             <div className="p-4 space-y-3">
               {selectedObs.description && <p className="text-sm text-slate-600">{selectedObs.description}</p>}
               {selectedObs.due_date && (
-                <p className="text-xs text-orange-500">
+                <p className="text-xs text-orange-700">
                   Échéance : {format(new Date(selectedObs.due_date), 'dd MMMM yyyy', { locale: fr })}
                 </p>
               )}
@@ -694,13 +706,13 @@ export default function InstallerView({ token, observations: initial, plans, las
                 <div className="flex gap-2 pt-2">
                   <button onClick={() => { updateStatus(selectedObs.id, 'resolue'); setSelectedObs(null) }}
                     disabled={selectedObs.status === 'resolue' || selectedObs.status === 'validee'}
-                    className="flex-1 flex items-center justify-center gap-1.5 py-2 bg-green-600 text-white rounded-lg text-sm hover:bg-green-700 disabled:opacity-40 transition-colors">
+                    className="flex-1 flex items-center justify-center gap-1.5 py-2 bg-green-700 text-white rounded-lg text-sm hover:bg-green-800 disabled:opacity-40 transition-colors">
                     <CheckCircle className="w-4 h-4" />
                     Marquer résolue
                   </button>
                   <button onClick={() => { updateStatus(selectedObs.id, 'contestee'); setSelectedObs(null) }}
                     disabled={selectedObs.status === 'contestee'}
-                    className="flex-1 flex items-center justify-center gap-1.5 py-2 bg-yellow-500 text-white rounded-lg text-sm hover:bg-yellow-600 disabled:opacity-40 transition-colors">
+                    className="flex-1 flex items-center justify-center gap-1.5 py-2 bg-yellow-400 text-yellow-950 rounded-lg text-sm hover:bg-yellow-500 disabled:opacity-40 transition-colors">
                     <AlertTriangle className="w-4 h-4" />
                     Contester
                   </button>

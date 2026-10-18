@@ -1,6 +1,9 @@
+import type { Metadata } from 'next'
 import { createClient } from '@/lib/supabase/server'
 import { redirect, notFound } from 'next/navigation'
 import PlanPageClient from '@/components/plans/PlanPageClient'
+
+export const metadata: Metadata = { title: 'Plan' }
 
 interface Props {
   params: Promise<{ projectId: string; planId: string }>

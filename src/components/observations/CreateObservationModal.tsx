@@ -4,6 +4,7 @@ import { useState, useCallback, useRef, useEffect } from 'react'
 import { useDropzone } from 'react-dropzone'
 import { createClient } from '@/lib/supabase/client'
 import { compressImage, isMobileDevice } from '@/lib/utils/image'
+import { LIMITS } from '@/lib/validation'
 import { Observation, ObservationPriority } from '@/types'
 import { X, Loader2, Upload, ImageIcon, Camera, Sparkles } from 'lucide-react'
 import { v4 as uuidv4 } from 'uuid'
@@ -62,8 +63,8 @@ export default function CreateObservationModal({
       })
       if (res.ok) {
         const data = await res.json()
-        if (data.title) setTitle(data.title)
-        if (data.description) setDescription(data.description)
+        if (typeof data.title === 'string') setTitle(data.title.slice(0, LIMITS.observationTitle))
+        if (typeof data.description === 'string') setDescription(data.description.slice(0, LIMITS.observationDescription))
         if (data.category && CATEGORIES.includes(data.category)) setCategory(data.category)
         if (data.priority) setPriority(data.priority as ObservationPriority)
         setAiGenerated(true)
@@ -119,7 +120,7 @@ export default function CreateObservationModal({
       .insert({
         project_id: projectId, plan_id: planId,
         plan_x: pinX, plan_y: pinY,
-        title, description: description || null,
+        title: title.trim(), description: description.trim() || null,
         priority, category: category || null,
         due_date: dueDate || null,
         created_by: userId, status: 'ouverte',
@@ -161,7 +162,7 @@ export default function CreateObservationModal({
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] flex flex-col">
         <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
           <h3 className="font-semibold text-slate-800">Nouvelle observation</h3>
-          <button onClick={onClose} className="p-1 hover:bg-slate-100 rounded-lg">
+          <button type="button" onClick={onClose} aria-label="Fermer" className="p-1 hover:bg-slate-100 rounded-lg">
             <X className="w-5 h-5 text-slate-500" />
           </button>
         </div>
@@ -173,18 +174,20 @@ export default function CreateObservationModal({
               <Sparkles className="w-3.5 h-3.5 text-violet-500" />
               <span className="text-xs font-semibold text-violet-700">Générer avec l'IA</span>
               {aiGenerated && (
-                <span className="ml-auto text-xs text-violet-500 bg-violet-100 px-2 py-0.5 rounded-full">
+                <span className="ml-auto text-xs text-violet-700 bg-violet-100 px-2 py-0.5 rounded-full">
                   Formulaire rempli
                 </span>
               )}
             </div>
             <div className="flex gap-2">
               <input
+                aria-label="Description rapide pour l'IA"
+                maxLength={LIMITS.aiInput}
                 value={aiInput}
                 onChange={(e) => { setAiInput(e.target.value); setAiGenerated(false) }}
                 onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); generateWithAI() } }}
                 placeholder="Décrivez la réserve en quelques mots..."
-                className="flex-1 px-3 py-1.5 border border-violet-200 rounded-lg text-sm bg-white focus:outline-hidden focus:ring-2 focus:ring-violet-400 text-slate-900 placeholder:text-slate-400"
+                className="flex-1 px-3 py-1.5 border border-violet-200 rounded-lg text-sm bg-white focus:outline-hidden focus:ring-2 focus:ring-violet-400 text-slate-900 placeholder:text-slate-500"
               />
               <button
                 type="button"
@@ -196,36 +199,36 @@ export default function CreateObservationModal({
                 Générer
               </button>
             </div>
-            <p className="text-xs text-violet-400">L'IA remplit automatiquement le titre, la description, la catégorie et la priorité.</p>
+            <p className="text-xs text-violet-700">L'IA remplit automatiquement le titre, la description, la catégorie et la priorité.</p>
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">
-              Titre <span className="text-red-500">*</span>
+            <label htmlFor="obs-title" className="block text-sm font-medium text-slate-700 mb-1">
+              Titre <span className="text-red-600">*</span>
             </label>
-            <input value={title} onChange={(e) => setTitle(e.target.value)} required
+            <input id="obs-title" value={title} onChange={(e) => setTitle(e.target.value)} required maxLength={LIMITS.observationTitle}
               className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-hidden focus:ring-2 focus:ring-blue-500 text-slate-900"
               placeholder="Ex: Fissure sur le mur porteur..." />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">Description</label>
-            <textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={2}
+            <label htmlFor="obs-description" className="block text-sm font-medium text-slate-700 mb-1">Description</label>
+            <textarea id="obs-description" maxLength={LIMITS.observationDescription} value={description} onChange={(e) => setDescription(e.target.value)} rows={2}
               className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-hidden focus:ring-2 focus:ring-blue-500 text-slate-900 resize-none"
               placeholder="Description détaillée..." />
           </div>
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Priorité</label>
-              <select value={priority} onChange={(e) => setPriority(e.target.value as ObservationPriority)}
+              <label htmlFor="obs-priority" className="block text-sm font-medium text-slate-700 mb-1">Priorité</label>
+              <select id="obs-priority" value={priority} onChange={(e) => setPriority(e.target.value as ObservationPriority)}
                 className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-hidden focus:ring-2 focus:ring-blue-500 text-slate-900 bg-white">
                 {PRIORITIES.map((p) => <option key={p.value} value={p.value}>{p.label}</option>)}
               </select>
             </div>
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Catégorie</label>
-              <select value={category} onChange={(e) => setCategory(e.target.value)}
+              <label htmlFor="obs-category" className="block text-sm font-medium text-slate-700 mb-1">Catégorie</label>
+              <select id="obs-category" value={category} onChange={(e) => setCategory(e.target.value)}
                 className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-hidden focus:ring-2 focus:ring-blue-500 text-slate-900 bg-white">
                 <option value="">— Sélectionner —</option>
                 {CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
@@ -234,15 +237,15 @@ export default function CreateObservationModal({
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">Date d'échéance</label>
-            <input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)}
+            <label htmlFor="obs-due-date" className="block text-sm font-medium text-slate-700 mb-1">Date d'échéance</label>
+            <input id="obs-due-date" type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)}
               className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-hidden focus:ring-2 focus:ring-blue-500 text-slate-900" />
           </div>
 
           {/* Photos */}
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-1">
-              Photos <span className="text-slate-400 font-normal">(max 5 — compressées auto)</span>
+              Photos <span className="text-slate-500 font-normal">(max 5 — compressées auto)</span>
             </label>
 
             <input ref={cameraRef} type="file" accept="image/*" capture="environment"
@@ -252,9 +255,9 @@ export default function CreateObservationModal({
               <div className="grid grid-cols-4 gap-2 mb-2">
                 {previews.map((src, i) => (
                   <div key={i} className="relative group aspect-square rounded-lg overflow-hidden bg-slate-100">
-                    <img src={src} alt="" className="w-full h-full object-cover" />
-                    <button type="button" onClick={() => removeFile(i)}
-                      className="absolute top-1 right-1 w-5 h-5 bg-red-500 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                    <img src={src} alt={`Photo sélectionnée ${i + 1}`} className="w-full h-full object-cover" />
+                    <button type="button" onClick={() => removeFile(i)} aria-label={`Retirer la photo ${i + 1}`}
+                      className="absolute top-1 right-1 w-5 h-5 pointer-coarse:w-7 pointer-coarse:h-7 bg-red-600 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 focus-visible:opacity-100 pointer-coarse:opacity-100 transition-opacity">
                       <X className="w-3 h-3 text-white" />
                     </button>
                   </div>
@@ -274,13 +277,13 @@ export default function CreateObservationModal({
                 <div className="grid grid-cols-2 gap-2">
                   <button type="button" onClick={() => cameraRef.current?.click()}
                     className="flex flex-col items-center gap-2 py-4 border-2 border-dashed border-slate-200 rounded-lg hover:border-blue-300 hover:bg-slate-50 transition-colors">
-                    <Camera className="w-6 h-6 text-slate-400" />
+                    <Camera className="w-6 h-6 text-slate-500" />
                     <span className="text-xs text-slate-500">Prendre une photo</span>
                   </button>
                   <div {...getRootProps()}
                     className="flex flex-col items-center gap-2 py-4 border-2 border-dashed border-slate-200 rounded-lg hover:border-blue-300 hover:bg-slate-50 transition-colors cursor-pointer">
                     <input {...getInputProps()} />
-                    <ImageIcon className="w-6 h-6 text-slate-400" />
+                    <ImageIcon className="w-6 h-6 text-slate-500" />
                     <span className="text-xs text-slate-500">Depuis la galerie</span>
                   </div>
                 </div>
@@ -290,11 +293,11 @@ export default function CreateObservationModal({
                     isDragActive ? 'border-blue-400 bg-blue-50' : 'border-slate-200 hover:border-blue-300 hover:bg-slate-50'
                   }`}>
                   <input {...getInputProps()} />
-                  <Upload className="w-5 h-5 text-slate-400 mx-auto mb-1" />
+                  <Upload className="w-5 h-5 text-slate-500 mx-auto mb-1" />
                   <p className="text-xs text-slate-500">
                     {isDragActive ? 'Déposez ici' : 'Glisser des photos ou cliquer'}
                   </p>
-                  <p className="text-xs text-slate-400 mt-0.5">JPG, PNG, WebP — 20 Mo max</p>
+                  <p className="text-xs text-slate-500 mt-0.5">JPG, PNG, WebP — 20 Mo max</p>
                 </div>
               )
             )}

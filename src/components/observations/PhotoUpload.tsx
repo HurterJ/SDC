@@ -116,15 +116,15 @@ export default function PhotoUpload({ observationId, userId, canUpload }: Props)
 
       {photos.length > 0 && (
         <div className="grid grid-cols-3 gap-2 mb-3">
-          {photos.map((photo) => (
+          {photos.map((photo, i) => (
             <div key={photo.id} className="relative group aspect-square rounded-lg overflow-hidden bg-slate-100">
-              <img src={photo.signedUrl ?? photo.file_url} alt={photo.caption ?? 'Photo'} className="w-full h-full object-cover" />
-              <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-colors flex items-center justify-center gap-1 opacity-0 group-hover:opacity-100">
-                <button onClick={() => setPreview(photo.signedUrl ?? photo.file_url)} className="p-1 bg-white rounded-full hover:bg-slate-100">
+              <img src={photo.signedUrl ?? photo.file_url} alt={photo.caption || `Photo ${i + 1} de l'observation`} className="w-full h-full object-cover" />
+              <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-colors flex items-center justify-center gap-1 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 pointer-coarse:opacity-100">
+                <button type="button" onClick={() => setPreview(photo.signedUrl ?? photo.file_url)} aria-label="Agrandir la photo" className="p-1 pointer-coarse:p-2 bg-white rounded-full hover:bg-slate-100">
                   <ZoomIn className="w-3.5 h-3.5 text-slate-700" />
                 </button>
                 {canUpload && (
-                  <button onClick={() => deletePhoto(photo)} className="p-1 bg-white rounded-full hover:bg-red-50">
+                  <button type="button" onClick={() => deletePhoto(photo)} aria-label="Supprimer la photo" className="p-1 pointer-coarse:p-2 bg-white rounded-full hover:bg-red-50">
                     <X className="w-3.5 h-3.5 text-red-500" />
                   </button>
                 )}
@@ -143,13 +143,13 @@ export default function PhotoUpload({ observationId, userId, canUpload }: Props)
             <div className="grid grid-cols-2 gap-2">
               <button type="button" onClick={() => cameraRef.current?.click()} disabled={uploading}
                 className="flex flex-col items-center gap-2 py-3 border-2 border-dashed border-slate-200 rounded-lg hover:border-blue-300 hover:bg-slate-50 transition-colors disabled:opacity-50">
-                {uploading ? <Loader2 className="w-5 h-5 animate-spin text-blue-500" /> : <Camera className="w-5 h-5 text-slate-400" />}
+                {uploading ? <Loader2 className="w-5 h-5 animate-spin text-blue-500" /> : <Camera className="w-5 h-5 text-slate-500" />}
                 <span className="text-xs text-slate-500">{uploading ? 'Upload...' : 'Prendre photo'}</span>
               </button>
               <div {...getRootProps()}
                 className="flex flex-col items-center gap-2 py-3 border-2 border-dashed border-slate-200 rounded-lg hover:border-blue-300 hover:bg-slate-50 transition-colors cursor-pointer">
                 <input {...getInputProps()} />
-                <ImageIcon className="w-5 h-5 text-slate-400" />
+                <ImageIcon className="w-5 h-5 text-slate-500" />
                 <span className="text-xs text-slate-500">Depuis la galerie</span>
               </div>
             </div>
@@ -166,11 +166,11 @@ export default function PhotoUpload({ observationId, userId, canUpload }: Props)
                 </div>
               ) : (
                 <div className="flex flex-col items-center gap-1.5">
-                  <Upload className="w-5 h-5 text-slate-400" />
+                  <Upload className="w-5 h-5 text-slate-500" />
                   <p className="text-xs text-slate-500">
                     {isDragActive ? 'Déposez ici' : 'Glisser des photos ou cliquer'}
                   </p>
-                  <p className="text-xs text-slate-400">JPG, PNG, WebP — 20 Mo max · compressées auto</p>
+                  <p className="text-xs text-slate-500">JPG, PNG, WebP — 20 Mo max · compressées auto</p>
                 </div>
               )}
             </div>
@@ -179,7 +179,7 @@ export default function PhotoUpload({ observationId, userId, canUpload }: Props)
       )}
 
       {!photos.length && !canUpload && (
-        <div className="flex flex-col items-center gap-2 py-6 text-slate-400">
+        <div className="flex flex-col items-center gap-2 py-6 text-slate-500">
           <ImageIcon className="w-8 h-8" />
           <p className="text-xs">Aucune photo</p>
         </div>
@@ -188,8 +188,8 @@ export default function PhotoUpload({ observationId, userId, canUpload }: Props)
       {/* Lightbox */}
       {preview && (
         <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-100 p-4" onClick={() => setPreview(null)}>
-          <img src={preview} alt="Aperçu" className="max-w-full max-h-full object-contain rounded-lg" />
-          <button onClick={() => setPreview(null)}
+          <img src={preview} alt="Photo agrandie" className="max-w-full max-h-full object-contain rounded-lg" />
+          <button type="button" onClick={() => setPreview(null)} aria-label="Fermer"
             className="absolute top-4 right-4 p-2 bg-white/10 rounded-full hover:bg-white/20 transition-colors">
             <X className="w-6 h-6 text-white" />
           </button>

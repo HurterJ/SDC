@@ -110,7 +110,7 @@ export default function PlanViewer({ planUrl, observations, canAddPin, onPinClic
                 className={`relative w-full h-full flex items-center justify-center ${canAddPin ? 'cursor-crosshair' : ''}`}
                 onDoubleClick={handleDoubleClick}
               >
-                <img src={planUrl} alt="Plan"
+                <img src={planUrl} alt="Plan du chantier"
                   className="max-w-full max-h-full object-contain select-none shadow-2xl"
                   draggable={false} />
 

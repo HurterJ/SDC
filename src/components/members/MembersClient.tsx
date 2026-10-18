@@ -6,6 +6,7 @@ import { InstallerToken } from '@/types'
 import { Link2, Plus, X, Copy, Check, Loader2, Power, PowerOff } from 'lucide-react'
 import { format } from 'date-fns'
 import { fr } from 'date-fns/locale'
+import { LIMITS, todayInputValue } from '@/lib/validation'
 
 interface Props {
   tokens: InstallerToken[]
@@ -23,18 +24,29 @@ export default function MembersClient({ tokens: initial, userId, projectId }: Pr
   const [role, setRole] = useState<'installateur' | 'lecteur'>('installateur')
   const [expiresAt, setExpiresAt] = useState('')
   const [loading, setLoading] = useState(false)
+  const [formError, setFormError] = useState<string | null>(null)
   const [copied, setCopied] = useState<string | null>(null)
   const supabase = createClient()
 
   async function createToken(e: React.FormEvent) {
     e.preventDefault()
+    const cleanName = name.trim()
+    if (!cleanName) {
+      setFormError('Indiquez le nom de la personne invitée.')
+      return
+    }
+    if (expiresAt && expiresAt < todayInputValue()) {
+      setFormError("La date d'expiration est déjà passée.")
+      return
+    }
     setLoading(true)
+    setFormError(null)
     const { data, error } = await supabase
       .from('installer_tokens')
       .insert({
         project_id: projectId,
-        name,
-        company: company || null,
+        name: cleanName,
+        company: company.trim() || null,
         email: email || null,
         role,
         expires_at: expiresAt || null,
@@ -50,6 +62,8 @@ export default function MembersClient({ tokens: initial, userId, projectId }: Pr
       setCompany('')
       setEmail('')
       setExpiresAt('')
+    } else {
+      setFormError("Le lien n'a pas pu être créé. Réessayez.")
     }
     setLoading(false)
   }
@@ -94,7 +108,7 @@ export default function MembersClient({ tokens: initial, userId, projectId }: Pr
         <div className="text-center py-16 bg-white rounded-xl border border-slate-200">
           <Link2 className="w-12 h-12 text-slate-200 mx-auto mb-3" />
           <p className="text-slate-500 font-medium">Aucun lien d'accès créé</p>
-          <p className="text-slate-400 text-sm mt-1">Les liens permettent aux installateurs d'accéder sans compte</p>
+          <p className="text-slate-500 text-sm mt-1">Les liens permettent aux installateurs d'accéder sans compte</p>
         </div>
       ) : (
         <div className="space-y-3">
@@ -126,10 +140,10 @@ export default function MembersClient({ tokens: initial, userId, projectId }: Pr
                         {token.role === 'installateur' ? 'Installateur' : 'Lecteur'}
                       </span>
                       {!token.is_active && (
-                        <span className="text-xs px-2 py-0.5 rounded-full bg-slate-100 text-slate-500">Désactivé</span>
+                        <span className="text-xs px-2 py-0.5 rounded-full bg-slate-100 text-slate-600">Désactivé</span>
                       )}
                       {isExpired && (
-                        <span className="text-xs px-2 py-0.5 rounded-full bg-red-100 text-red-600">Expiré</span>
+                        <span className="text-xs px-2 py-0.5 rounded-full bg-red-100 text-red-700">Expiré</span>
                       )}
                     </div>
 
@@ -143,17 +157,17 @@ export default function MembersClient({ tokens: initial, userId, projectId }: Pr
                         title="Copier le lien"
                       >
                         {copied === token.token ? (
-                          <Check className="w-4 h-4 text-green-500" />
+                          <Check className="w-4 h-4 text-green-700" />
                         ) : (
-                          <Copy className="w-4 h-4 text-slate-400" />
+                          <Copy className="w-4 h-4 text-slate-500" />
                         )}
                       </button>
                     </div>
 
-                    <div className="flex items-center gap-3 mt-1 text-xs text-slate-400">
+                    <div className="flex items-center gap-3 mt-1 text-xs text-slate-500">
                       <span>Créé le {format(new Date(token.created_at), 'dd/MM/yyyy', { locale: fr })}</span>
                       {token.expires_at && (
-                        <span className={isExpired ? 'text-red-500' : ''}>
+                        <span className={isExpired ? 'text-red-600' : ''}>
                           Expire le {format(new Date(token.expires_at), 'dd/MM/yyyy', { locale: fr })}
                         </span>
                       )}
@@ -165,8 +179,8 @@ export default function MembersClient({ tokens: initial, userId, projectId }: Pr
                       onClick={() => toggleToken(token.id, token.is_active)}
                       className={`p-1.5 rounded-lg transition-colors ${
                         token.is_active
-                          ? 'text-orange-500 hover:bg-orange-50'
-                          : 'text-green-500 hover:bg-green-50'
+                          ? 'text-orange-700 hover:bg-orange-50'
+                          : 'text-green-700 hover:bg-green-50'
                       }`}
                       title={token.is_active ? 'Désactiver' : 'Activer'}
                     >
@@ -174,7 +188,7 @@ export default function MembersClient({ tokens: initial, userId, projectId }: Pr
                     </button>
                     <button
                       onClick={() => deleteToken(token.id)}
-                      className="p-1.5 text-red-400 hover:bg-red-50 rounded-lg transition-colors"
+                      className="p-1.5 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
                       title="Supprimer"
                     >
                       <X className="w-4 h-4" />
@@ -193,27 +207,31 @@ export default function MembersClient({ tokens: initial, userId, projectId }: Pr
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md">
             <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
               <h3 className="font-semibold text-slate-800">Créer un lien d'accès</h3>
-              <button onClick={() => setShowModal(false)} className="p-1 hover:bg-slate-100 rounded-lg">
+              <button type="button" onClick={() => setShowModal(false)} aria-label="Fermer" className="p-1 hover:bg-slate-100 rounded-lg">
                 <X className="w-5 h-5 text-slate-500" />
               </button>
             </div>
             <form onSubmit={createToken} className="p-6 space-y-4">
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">
-                  Nom <span className="text-red-500">*</span>
+                <label htmlFor="invite-name" className="block text-sm font-medium text-slate-700 mb-1">
+                  Nom <span className="text-red-600">*</span>
                 </label>
                 <input
+                  id="invite-name"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   required
+                  maxLength={LIMITS.installerName}
                   className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-hidden focus:ring-2 focus:ring-blue-500 text-slate-900"
                   placeholder="Ex: Jean Dupont"
                 />
               </div>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">Entreprise</label>
+                  <label htmlFor="invite-company" className="block text-sm font-medium text-slate-700 mb-1">Entreprise</label>
                   <input
+                    id="invite-company"
+                    maxLength={LIMITS.company}
                     value={company}
                     onChange={(e) => setCompany(e.target.value)}
                     className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-hidden focus:ring-2 focus:ring-blue-500 text-slate-900"
@@ -221,8 +239,9 @@ export default function MembersClient({ tokens: initial, userId, projectId }: Pr
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">Rôle</label>
+                  <label htmlFor="invite-role" className="block text-sm font-medium text-slate-700 mb-1">Rôle</label>
                   <select
+                    id="invite-role"
                     value={role}
                     onChange={(e) => setRole(e.target.value as 'installateur' | 'lecteur')}
                     className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-hidden focus:ring-2 focus:ring-blue-500 text-slate-900 bg-white"
@@ -233,14 +252,17 @@ export default function MembersClient({ tokens: initial, userId, projectId }: Pr
                 </div>
               </div>
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Date d'expiration</label>
+                <label htmlFor="invite-expires" className="block text-sm font-medium text-slate-700 mb-1">Date d'expiration</label>
                 <input
+                  id="invite-expires"
                   type="date"
+                  min={todayInputValue()}
                   value={expiresAt}
                   onChange={(e) => setExpiresAt(e.target.value)}
                   className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-hidden focus:ring-2 focus:ring-blue-500 text-slate-900"
                 />
               </div>
+              {formError && <p role="alert" className="text-sm text-red-700 bg-red-50 px-3 py-2 rounded-lg">{formError}</p>}
               <div className="flex gap-3 pt-2">
                 <button
                   type="button"

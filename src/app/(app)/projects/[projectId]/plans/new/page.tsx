@@ -2,11 +2,12 @@
 
 import { use, useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
-import { useDropzone } from 'react-dropzone'
+import { useDropzone, type FileRejection } from 'react-dropzone'
 import { createClient } from '@/lib/supabase/client'
 import { ArrowLeft, Upload, File, Loader2, X } from 'lucide-react'
 import Link from 'next/link'
 import { v4 as uuidv4 } from 'uuid'
+import { LIMITS, MAX_PLAN_BYTES } from '@/lib/validation'
 
 export default function NewPlanPage({ params }: { params: Promise<{ projectId: string }> }) {
   const { projectId } = use(params)
@@ -18,8 +19,17 @@ export default function NewPlanPage({ params }: { params: Promise<{ projectId: s
   const router = useRouter()
   const supabase = createClient()
 
-  const onDrop = useCallback((accepted: File[]) => {
-    if (accepted[0]) setFile(accepted[0])
+  // Fichier refusé par le sélecteur (format ou taille) : on dit pourquoi au lieu de ne rien faire
+  const onDrop = useCallback((accepted: File[], rejected: FileRejection[]) => {
+    if (accepted[0]) {
+      setFile(accepted[0])
+      setError(null)
+    } else if (rejected[0]) {
+      const code = rejected[0].errors[0]?.code
+      setError(code === 'file-too-large'
+        ? 'Fichier trop lourd : 50 Mo maximum.'
+        : 'Format non pris en charge : utilisez un PDF ou une image PNG, JPG ou WebP.')
+    }
   }, [])
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
@@ -29,12 +39,19 @@ export default function NewPlanPage({ params }: { params: Promise<{ projectId: s
       'application/pdf': ['.pdf'],
     },
     maxFiles: 1,
-    maxSize: 50 * 1024 * 1024,
+    maxSize: MAX_PLAN_BYTES,
   })
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
-    if (!file || !name) return
+    if (!name.trim()) {
+      setError('Donnez un nom au plan.')
+      return
+    }
+    if (!file) {
+      setError('Ajoutez le fichier du plan (PDF ou image).')
+      return
+    }
     setLoading(true)
     setError(null)
 
@@ -58,8 +75,8 @@ export default function NewPlanPage({ params }: { params: Promise<{ projectId: s
       .from('plans')
       .insert({
         project_id: projectId,
-        name,
-        description: description || null,
+        name: name.trim(),
+        description: description.trim() || null,
         file_url: urlData.publicUrl,
         file_path: path,
         created_by: user!.id,
@@ -78,7 +95,7 @@ export default function NewPlanPage({ params }: { params: Promise<{ projectId: s
   return (
     <div className="flex flex-col h-full overflow-hidden">
       <div className="flex items-center gap-4 px-6 py-3 bg-white border-b border-slate-200">
-        <Link href={`/projects/${projectId}`} className="p-1.5 hover:bg-slate-100 rounded-lg">
+        <Link href={`/projects/${projectId}`} aria-label="Retour au projet" className="p-1.5 hover:bg-slate-100 rounded-lg">
           <ArrowLeft className="w-5 h-5 text-slate-600" />
         </Link>
         <h1 className="font-semibold text-slate-800">Ajouter un plan</h1>
@@ -87,21 +104,25 @@ export default function NewPlanPage({ params }: { params: Promise<{ projectId: s
       <main className="flex-1 overflow-y-auto p-6 max-w-2xl mx-auto w-full">
         <form onSubmit={handleSubmit} className="space-y-5">
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">
-              Nom du plan <span className="text-red-500">*</span>
+            <label htmlFor="plan-name" className="block text-sm font-medium text-slate-700 mb-1">
+              Nom du plan <span className="text-red-600">*</span>
             </label>
             <input
+              id="plan-name"
               value={name}
               onChange={(e) => setName(e.target.value)}
               required
+              maxLength={LIMITS.planName}
               className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-hidden focus:ring-2 focus:ring-blue-500 text-slate-900"
               placeholder="Ex: Niveau RDC — Électricité"
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">Description</label>
+            <label htmlFor="plan-description" className="block text-sm font-medium text-slate-700 mb-1">Description</label>
             <textarea
+              id="plan-description"
+              maxLength={LIMITS.planDescription}
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               rows={2}
@@ -112,7 +133,7 @@ export default function NewPlanPage({ params }: { params: Promise<{ projectId: s
 
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-1">
-              Fichier <span className="text-red-500">*</span>
+              Fichier <span className="text-red-600">*</span>
             </label>
 
             {file ? (
@@ -122,7 +143,7 @@ export default function NewPlanPage({ params }: { params: Promise<{ projectId: s
                   <p className="text-sm font-medium text-slate-800 truncate">{file.name}</p>
                   <p className="text-xs text-slate-500">{(file.size / 1024 / 1024).toFixed(2)} Mo</p>
                 </div>
-                <button type="button" onClick={() => setFile(null)} className="p-1 hover:bg-green-100 rounded-sm">
+                <button type="button" onClick={() => setFile(null)} aria-label="Retirer le fichier" className="p-1 hover:bg-green-100 rounded-sm">
                   <X className="w-4 h-4 text-slate-500" />
                 </button>
               </div>
@@ -134,17 +155,17 @@ export default function NewPlanPage({ params }: { params: Promise<{ projectId: s
                 }`}
               >
                 <input {...getInputProps()} />
-                <Upload className="w-8 h-8 text-slate-400 mx-auto mb-3" />
+                <Upload className="w-8 h-8 text-slate-500 mx-auto mb-3" />
                 <p className="text-sm font-medium text-slate-700">
                   {isDragActive ? 'Déposez le fichier ici' : 'Glisser-déposer ou cliquer'}
                 </p>
-                <p className="text-xs text-slate-400 mt-1">PNG, JPG, WebP, PDF — 50 Mo max</p>
+                <p className="text-xs text-slate-500 mt-1">PNG, JPG, WebP, PDF — 50 Mo max</p>
               </div>
             )}
           </div>
 
           {error && (
-            <p className="text-sm text-red-600 bg-red-50 px-4 py-3 rounded-lg">{error}</p>
+            <p role="alert" className="text-sm text-red-700 bg-red-50 px-4 py-3 rounded-lg">{error}</p>
           )}
 
           <div className="flex gap-3">

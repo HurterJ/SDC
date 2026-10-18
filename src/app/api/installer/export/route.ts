@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { getInstallerToken } from '@/lib/installer/token'
+import { MINUTE, rateLimit } from '@/lib/api/rate-limit'
 import { format } from 'date-fns'
 import { fr } from 'date-fns/locale'
 
@@ -30,6 +31,10 @@ export async function GET(req: NextRequest) {
   const tokenStr = req.nextUrl.searchParams.get('token')
   const exportFormat = req.nextUrl.searchParams.get('format') ?? 'pdf'
   if (!tokenStr) return new NextResponse('Missing token', { status: 400 })
+  if (exportFormat !== 'pdf' && exportFormat !== 'excel') return new NextResponse('Invalid format', { status: 400 })
+
+  const limited = rateLimit(req, 'installer-export', tokenStr, { limit: 10, windowMs: MINUTE })
+  if (limited) return limited
 
   const admin = createAdminClient()
 

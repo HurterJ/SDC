@@ -1,19 +1,26 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { getInstallerToken, isObservationInProject } from '@/lib/installer/token'
+import { badRequest, readJson } from '@/lib/api/request'
+import { MINUTE, rateLimit } from '@/lib/api/rate-limit'
 
 // Statuts qu'un installateur peut poser (Validée reste réservée au conducteur)
 const INSTALLER_STATUSES = ['resolue', 'contestee']
 
 export async function POST(req: NextRequest) {
-  const { observation_id, token, status } = await req.json()
+  const body = await readJson(req)
+  if (!body) return badRequest('Invalid body')
+  const { observation_id, token, status } = body
 
-  if (!observation_id || !token || !status) {
+  if (!observation_id || typeof token !== 'string' || !token || typeof status !== 'string') {
     return NextResponse.json({ error: 'Missing fields' }, { status: 400 })
   }
   if (!INSTALLER_STATUSES.includes(status)) {
     return NextResponse.json({ error: 'Invalid status' }, { status: 400 })
   }
+
+  const limited = rateLimit(req, 'installer-status', token, { limit: 60, windowMs: 5 * MINUTE })
+  if (limited) return limited
 
   const admin = createAdminClient()
 

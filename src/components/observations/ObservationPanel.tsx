@@ -5,6 +5,7 @@ import { createClient } from '@/lib/supabase/client'
 import { Observation, ObservationStatus, ObservationComment } from '@/types'
 import { STATUS_LABELS, STATUS_COLORS, PRIORITY_LABELS, PRIORITY_COLORS } from '@/lib/utils/status'
 import PhotoUpload from './PhotoUpload'
+import { LIMITS } from '@/lib/validation'
 import { X, Trash2, Calendar, Tag, Loader2, MessageSquare, Send, User } from 'lucide-react'
 import { format } from 'date-fns'
 import { fr } from 'date-fns/locale'
@@ -113,11 +114,11 @@ export default function ObservationPanel({ observation, userId, role, onClose, o
       <div className="flex items-start justify-between p-4 border-b border-slate-100">
         <div className="flex-1 min-w-0 pr-3">
           <h3 className="font-semibold text-slate-800 leading-snug">{observation.title}</h3>
-          <p className="text-xs text-slate-400 mt-0.5">
+          <p className="text-xs text-slate-500 mt-0.5">
             {format(new Date(observation.created_at), 'dd MMMM yyyy à HH:mm', { locale: fr })}
           </p>
         </div>
-        <button onClick={onClose} className="p-1 hover:bg-slate-100 rounded-lg shrink-0">
+        <button type="button" onClick={onClose} aria-label="Fermer" className="p-1 hover:bg-slate-100 rounded-lg shrink-0">
           <X className="w-4 h-4 text-slate-500" />
         </button>
       </div>
@@ -200,10 +201,10 @@ export default function ObservationPanel({ observation, userId, role, onClose, o
 
           {loadingComments ? (
             <div className="flex justify-center py-4">
-              <Loader2 className="w-4 h-4 animate-spin text-slate-400" />
+              <Loader2 className="w-4 h-4 animate-spin text-slate-500" />
             </div>
           ) : comments.length === 0 ? (
-            <p className="text-sm text-slate-400 text-center py-4">Aucun commentaire</p>
+            <p className="text-sm text-slate-500 text-center py-4">Aucun commentaire</p>
           ) : (
             <div className="space-y-2 mb-4">
               {comments.map((c) => {
@@ -215,15 +216,15 @@ export default function ObservationPanel({ observation, userId, role, onClose, o
                     className={`rounded-lg p-3 ${isMine ? 'bg-blue-50 ml-4' : 'bg-slate-50 mr-4'}`}
                   >
                     <div className="flex items-center gap-1.5 mb-1">
-                      <User className="w-3 h-3 text-slate-400" />
+                      <User className="w-3 h-3 text-slate-500" />
                       <span className="text-xs font-medium text-slate-500">{authorName}</span>
-                      <span className="text-xs text-slate-300 ml-auto">
+                      <span className="text-xs text-slate-500 ml-auto">
                         {format(new Date(c.created_at), 'dd/MM HH:mm')}
                       </span>
                     </div>
                     {c.content && <p className="text-sm text-slate-700">{c.content}</p>}
                     {c.photo_url && (
-                      <img src={c.photo_url} alt="Photo jointe" className="mt-1.5 rounded-lg max-h-48 object-cover cursor-pointer" onClick={() => window.open(c.photo_url!, '_blank')} />
+                      <img src={c.photo_url} alt={`Photo jointe par ${authorName}`} className="mt-1.5 rounded-lg max-h-48 object-cover cursor-pointer" onClick={() => window.open(c.photo_url!, '_blank')} />
                     )}
                   </div>
                 )
@@ -233,6 +234,8 @@ export default function ObservationPanel({ observation, userId, role, onClose, o
 
           <form onSubmit={sendCommentHandler} className="flex gap-2 mt-3">
             <input
+              aria-label="Commentaire"
+              maxLength={LIMITS.comment}
               value={comment}
               onChange={(e) => setComment(e.target.value)}
               placeholder="Ajouter un commentaire..."
@@ -240,6 +243,7 @@ export default function ObservationPanel({ observation, userId, role, onClose, o
             />
             <button
               type="submit"
+              aria-label="Envoyer le commentaire"
               disabled={sendingComment || !comment.trim()}
               className="p-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors"
             >

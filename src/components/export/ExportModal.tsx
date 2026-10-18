@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { ObservationStatus } from '@/types'
 import { STATUS_LABELS } from '@/lib/utils/status'
+import { LIMITS } from '@/lib/validation'
 import { X, FileDown, Loader2, FileSpreadsheet } from 'lucide-react'
 
 interface Props {
@@ -57,7 +58,7 @@ export default function ExportModal({ projectId, projectName, onClose }: Props) 
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md">
         <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
           <h3 className="font-semibold text-slate-800">Exporter les réserves</h3>
-          <button onClick={onClose} className="p-1 hover:bg-slate-100 rounded-lg">
+          <button type="button" onClick={onClose} aria-label="Fermer" className="p-1 hover:bg-slate-100 rounded-lg">
             <X className="w-5 h-5 text-slate-500" />
           </button>
         </div>
@@ -65,8 +66,10 @@ export default function ExportModal({ projectId, projectName, onClose }: Props) 
         <div className="p-6 space-y-5">
           {/* Titre */}
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">Titre du rapport</label>
+            <label htmlFor="export-title" className="block text-sm font-medium text-slate-700 mb-1">Titre du rapport</label>
             <input
+              id="export-title"
+              maxLength={LIMITS.exportTitle}
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-hidden focus:ring-2 focus:ring-blue-500 text-slate-900"
@@ -75,10 +78,12 @@ export default function ExportModal({ projectId, projectName, onClose }: Props) 
 
           {/* Sous-titre */}
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">
-              Sous-titre <span className="text-slate-400 font-normal">(optionnel)</span>
+            <label htmlFor="export-subtitle" className="block text-sm font-medium text-slate-700 mb-1">
+              Sous-titre <span className="text-slate-500 font-normal">(optionnel)</span>
             </label>
             <input
+              id="export-subtitle"
+              maxLength={LIMITS.exportTitle}
               value={subtitle}
               onChange={(e) => setSubtitle(e.target.value)}
               placeholder="Ex: Contrôle du 05/04/2026 — Lot électricité"
@@ -151,7 +156,7 @@ export default function ExportModal({ projectId, projectName, onClose }: Props) 
           </button>
         </div>
 
-        <p className="text-xs text-slate-400 text-center pb-4 px-6">
+        <p className="text-xs text-slate-500 text-center pb-4 px-6">
           Le PDF s'ouvre dans un nouvel onglet → Fichier → Imprimer → Enregistrer en PDF
         </p>
       </div>

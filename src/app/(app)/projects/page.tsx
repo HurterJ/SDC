@@ -1,9 +1,12 @@
 export const dynamic = 'force-dynamic'
 
+import type { Metadata } from 'next'
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import Header from '@/components/layout/Header'
 import ProjectsClient from '@/components/projects/ProjectsClient'
+
+export const metadata: Metadata = { title: 'Projets' }
 
 export default async function ProjectsPage() {
   const supabase = await createClient()

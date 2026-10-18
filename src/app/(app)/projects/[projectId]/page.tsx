@@ -1,8 +1,11 @@
+import type { Metadata } from 'next'
 import { createClient } from '@/lib/supabase/server'
 import { redirect, notFound } from 'next/navigation'
 import Header from '@/components/layout/Header'
 import Link from 'next/link'
 import { Map, ListChecks, Users, Plus, ChevronRight } from 'lucide-react'
+
+export const metadata: Metadata = { title: 'Projet' }
 
 interface Props {
   params: Promise<{ projectId: string }>
@@ -57,7 +60,7 @@ export default async function ProjectPage({ params }: Props) {
           </div>
           <div className="bg-orange-50 border border-orange-100 rounded-xl p-4 text-center">
             <p className="text-2xl font-bold text-orange-700">{inProgress}</p>
-            <p className="text-sm text-orange-600 mt-0.5">En cours</p>
+            <p className="text-sm text-orange-700 mt-0.5">En cours</p>
           </div>
         </div>
 
@@ -74,7 +77,7 @@ export default async function ProjectPage({ params }: Props) {
               <h3 className="font-semibold text-slate-800">Réserves / Observations</h3>
               <p className="text-sm text-slate-500">{total} au total</p>
             </div>
-            <ChevronRight className="w-5 h-5 text-slate-400" />
+            <ChevronRight className="w-5 h-5 text-slate-500" />
           </Link>
 
           <Link
@@ -88,7 +91,7 @@ export default async function ProjectPage({ params }: Props) {
               <h3 className="font-semibold text-slate-800">Membres & Accès</h3>
               <p className="text-sm text-slate-500">Gérer les intervenants</p>
             </div>
-            <ChevronRight className="w-5 h-5 text-slate-400" />
+            <ChevronRight className="w-5 h-5 text-slate-500" />
           </Link>
         </div>
 
@@ -113,7 +116,7 @@ export default async function ProjectPage({ params }: Props) {
             <div className="text-center py-12">
               <Map className="w-10 h-10 text-slate-200 mx-auto mb-3" />
               <p className="text-slate-500 font-medium">Aucun plan chargé</p>
-              <p className="text-slate-400 text-sm mt-1">Ajoutez un plan PDF ou image pour y placer des observations</p>
+              <p className="text-slate-500 text-sm mt-1">Ajoutez un plan PDF ou image pour y placer des observations</p>
             </div>
           ) : (
             <ul className="divide-y divide-slate-100">
@@ -128,11 +131,11 @@ export default async function ProjectPage({ params }: Props) {
                     </div>
                     <div className="flex-1">
                       <p className="font-medium text-slate-800">{plan.name}</p>
-                      <p className="text-xs text-slate-400">
+                      <p className="text-xs text-slate-500">
                         {new Date(plan.created_at).toLocaleDateString('fr-FR')}
                       </p>
                     </div>
-                    <ChevronRight className="w-4 h-4 text-slate-400" />
+                    <ChevronRight className="w-4 h-4 text-slate-500" />
                   </Link>
                 </li>
               ))}

@@ -1,7 +1,10 @@
+import type { Metadata } from 'next'
 import { createAdminClient } from '@/lib/supabase/admin'
 import type { InstallerToken } from '@/lib/installer/token'
 import { notFound } from 'next/navigation'
 import InstallerView from '@/components/installer/InstallerView'
+
+export const metadata: Metadata = { title: 'Espace installateur' }
 
 interface Props {
   params: Promise<{ token: string }>

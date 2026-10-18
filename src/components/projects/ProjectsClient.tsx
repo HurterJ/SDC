@@ -6,6 +6,7 @@ import { createClient } from '@/lib/supabase/client'
 import { Project } from '@/types'
 import { FolderOpen, Plus, MapPin, X, Loader2 } from 'lucide-react'
 import Link from 'next/link'
+import { LIMITS } from '@/lib/validation'
 
 interface Props {
   projects: Project[]
@@ -19,15 +20,22 @@ export default function ProjectsClient({ projects: initial, userId }: Props) {
   const [description, setDescription] = useState('')
   const [address, setAddress] = useState('')
   const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
   const router = useRouter()
   const supabase = createClient()
 
   async function createProject(e: React.FormEvent) {
     e.preventDefault()
+    const cleanName = name.trim()
+    if (!cleanName) {
+      setError('Donnez un nom au projet.')
+      return
+    }
     setLoading(true)
+    setError(null)
     const { data, error } = await supabase
       .from('projects')
-      .insert({ name, description: description || null, address: address || null, owner_id: userId })
+      .insert({ name: cleanName, description: description.trim() || null, address: address.trim() || null, owner_id: userId })
       .select()
       .single()
     if (!error && data) {
@@ -37,6 +45,8 @@ export default function ProjectsClient({ projects: initial, userId }: Props) {
       setDescription('')
       setAddress('')
       router.refresh()
+    } else {
+      setError("Le projet n'a pas pu être créé. Réessayez.")
     }
     setLoading(false)
   }
@@ -61,7 +71,7 @@ export default function ProjectsClient({ projects: initial, userId }: Props) {
         <div className="text-center py-20">
           <FolderOpen className="w-16 h-16 text-slate-200 mx-auto mb-4" />
           <p className="text-slate-500 font-medium text-lg">Aucun projet</p>
-          <p className="text-slate-400 text-sm mt-1">Créez votre premier projet de suivi de réserves</p>
+          <p className="text-slate-500 text-sm mt-1">Créez votre premier projet de suivi de réserves</p>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
@@ -81,12 +91,12 @@ export default function ProjectsClient({ projects: initial, userId }: Props) {
                 <p className="text-sm text-slate-500 line-clamp-2 mb-2">{project.description}</p>
               )}
               {project.address && (
-                <div className="flex items-center gap-1 text-xs text-slate-400 mt-2">
+                <div className="flex items-center gap-1 text-xs text-slate-500 mt-2">
                   <MapPin className="w-3 h-3" />
                   <span className="truncate">{project.address}</span>
                 </div>
               )}
-              <p className="text-xs text-slate-400 mt-3 pt-3 border-t border-slate-100">
+              <p className="text-xs text-slate-500 mt-3 pt-3 border-t border-slate-100">
                 Mis à jour le {new Date(project.updated_at).toLocaleDateString('fr-FR')}
               </p>
             </Link>
@@ -100,26 +110,30 @@ export default function ProjectsClient({ projects: initial, userId }: Props) {
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md">
             <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
               <h3 className="font-semibold text-slate-800">Nouveau projet</h3>
-              <button onClick={() => setShowModal(false)} className="p-1 hover:bg-slate-100 rounded-lg transition-colors">
+              <button type="button" onClick={() => setShowModal(false)} aria-label="Fermer" className="p-1 hover:bg-slate-100 rounded-lg transition-colors">
                 <X className="w-5 h-5 text-slate-500" />
               </button>
             </div>
             <form onSubmit={createProject} className="p-6 space-y-4">
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">
-                  Nom du projet <span className="text-red-500">*</span>
+                <label htmlFor="project-name" className="block text-sm font-medium text-slate-700 mb-1">
+                  Nom du projet <span className="text-red-600">*</span>
                 </label>
                 <input
+                  id="project-name"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   required
+                  maxLength={LIMITS.projectName}
                   className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-hidden focus:ring-2 focus:ring-blue-500 text-slate-900"
                   placeholder="Ex: Immeuble Résidence Les Pins"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Description</label>
+                <label htmlFor="project-description" className="block text-sm font-medium text-slate-700 mb-1">Description</label>
                 <textarea
+                  id="project-description"
+                  maxLength={LIMITS.projectDescription}
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
                   rows={3}
@@ -128,14 +142,18 @@ export default function ProjectsClient({ projects: initial, userId }: Props) {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Adresse</label>
+                <label htmlFor="project-address" className="block text-sm font-medium text-slate-700 mb-1">Adresse</label>
                 <input
+                  id="project-address"
+                  maxLength={LIMITS.address}
+                  autoComplete="street-address"
                   value={address}
                   onChange={(e) => setAddress(e.target.value)}
                   className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-hidden focus:ring-2 focus:ring-blue-500 text-slate-900"
-                  placeholder="123 rue de la Paix, 75001 Paris"
+                  placeholder="12 chemin des Pins, 1200 Genève"
                 />
               </div>
+              {error && <p role="alert" className="text-sm text-red-700 bg-red-50 px-3 py-2 rounded-lg">{error}</p>}
               <div className="flex gap-3 pt-2">
                 <button
                   type="button"

@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { getInstallerToken, isObservationInProject } from '@/lib/installer/token'
 import { v4 as uuidv4 } from 'uuid'
+import { badRequest } from '@/lib/api/request'
+import { MINUTE, rateLimit } from '@/lib/api/rate-limit'
+import { MAX_PHOTO_BYTES } from '@/lib/validation'
 
 const IMAGE_EXTENSIONS: Record<string, string> = {
   'image/webp': 'webp',
@@ -12,14 +15,19 @@ const IMAGE_EXTENSIONS: Record<string, string> = {
 }
 
 export async function POST(req: NextRequest) {
-  const formData = await req.formData()
-  const file = formData.get('file') as File | null
-  const observation_id = formData.get('observation_id') as string
-  const token = formData.get('token') as string
+  const formData = await req.formData().catch(() => null)
+  if (!formData) return badRequest('Invalid body')
+  const file = formData.get('file')
+  const observation_id = formData.get('observation_id')
+  const token = formData.get('token')
 
-  if (!file || !observation_id || !token) {
+  if (!(file instanceof File) || typeof observation_id !== 'string' || !observation_id || typeof token !== 'string' || !token) {
     return NextResponse.json({ error: 'Missing fields' }, { status: 400 })
   }
+  if (file.size > MAX_PHOTO_BYTES) return badRequest('Photo trop lourde (20 Mo maximum).')
+
+  const limited = rateLimit(req, 'installer-photo', token, { limit: 20, windowMs: 10 * MINUTE })
+  if (limited) return limited
 
   const ext = IMAGE_EXTENSIONS[file.type]
   if (!ext) return NextResponse.json({ error: 'Unsupported file type' }, { status: 400 })

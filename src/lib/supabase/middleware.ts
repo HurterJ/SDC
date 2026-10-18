@@ -33,7 +33,15 @@ export async function updateSession(request: NextRequest) {
 
   // Public paths that don't require auth.
   // Les routes installateur et la suggestion IA vérifient elles-mêmes le token installateur.
-  const publicPaths = ['/login', '/installer', '/api/installer/', '/api/ai/suggest-reply', '/api/icon']
+  const publicPaths = [
+    '/login',
+    '/confidentialite',
+    '/conditions',
+    '/installer',
+    '/api/installer/',
+    '/api/ai/suggest-reply',
+    '/api/icon',
+  ]
   const isPublic = publicPaths.some((p) => pathname.startsWith(p))
 
   if (!user && !isPublic) {

@@ -13,7 +13,7 @@ export const STATUS_COLORS: Record<ObservationStatus, string> = {
   en_cours: 'bg-orange-100 text-orange-700 border-orange-200',
   resolue: 'bg-blue-100 text-blue-700 border-blue-200',
   contestee: 'bg-yellow-100 text-yellow-700 border-yellow-200',
-  validee: 'bg-green-100 text-green-700 border-green-200',
+  validee: 'bg-green-100 text-green-800 border-green-200',
 }
 
 export const STATUS_DOT_COLORS: Record<ObservationStatus, string> = {

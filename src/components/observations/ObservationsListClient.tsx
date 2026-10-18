@@ -107,14 +107,14 @@ export default function ObservationsListClient({ observations: initial, userId, 
             className="rounded-xl p-3 text-center border border-green-100 bg-green-50 hover:border-green-200 transition-all"
           >
             <p className="text-xl font-bold text-green-700">{resolvedCount}</p>
-            <p className="text-xs text-green-600">Résolues</p>
+            <p className="text-xs text-green-700">Résolues</p>
           </button>
         </div>
 
         {/* Toolbar */}
         <div className="flex flex-wrap items-center gap-2 mb-3">
           <div className="relative flex-1 min-w-40">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
             <input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
@@ -215,13 +215,13 @@ export default function ObservationsListClient({ observations: initial, userId, 
                         {STATUS_LABELS[obs.status]}
                       </span>
                       {obs.category && (
-                        <span className="text-xs text-slate-400">{obs.category}</span>
+                        <span className="text-xs text-slate-500">{obs.category}</span>
                       )}
-                      <span className="text-xs text-slate-400">
+                      <span className="text-xs text-slate-500">
                         {format(new Date(obs.created_at), 'dd/MM/yyyy', { locale: fr })}
                       </span>
                       {obs.due_date && (
-                        <span className="text-xs text-orange-500">
+                        <span className="text-xs text-orange-700">
                           Échéance : {format(new Date(obs.due_date), 'dd/MM/yyyy', { locale: fr })}
                         </span>
                       )}

@@ -1,5 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
-import { Bell, User } from 'lucide-react'
+import { User } from 'lucide-react'
 
 interface HeaderProps {
   title?: string
@@ -20,12 +20,9 @@ export default async function Header({ title }: HeaderProps) {
   }
 
   return (
-    <header className="h-14 bg-white border-b border-slate-200 flex items-center justify-between px-6 shrink-0">
-      <h1 className="text-lg font-semibold text-slate-800">{title}</h1>
-      <div className="flex items-center gap-4">
-        <button className="relative p-2 text-slate-500 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition-colors">
-          <Bell className="w-5 h-5" />
-        </button>
+    <header className="h-14 bg-white border-b border-slate-200 flex items-center justify-between gap-4 px-4 sm:px-6 shrink-0">
+      <h1 className="text-lg font-semibold text-slate-800 truncate min-w-0">{title}</h1>
+      <div className="flex items-center gap-4 shrink-0">
         <div className="flex items-center gap-2">
           <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
             <User className="w-4 h-4 text-blue-600" />

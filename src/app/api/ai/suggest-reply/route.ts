@@ -3,12 +3,25 @@ import Anthropic from '@anthropic-ai/sdk'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { getInstallerToken } from '@/lib/installer/token'
+import { badRequest, cleanText, readJson } from '@/lib/api/request'
+import { MINUTE, rateLimit } from '@/lib/api/rate-limit'
+import { LIMITS } from '@/lib/validation'
 
 const client = new Anthropic()
 
 export async function POST(req: NextRequest) {
-  const { observation_title, observation_description, comments, token } = await req.json()
+  const body = await readJson(req)
+  if (!body) return badRequest('Invalid body')
+  const { token } = body
+  // Textes bornés : ils partent dans le prompt et chaque appel est facturé
+  const observation_title = cleanText(body.observation_title, LIMITS.observationTitle)
+  const observation_description = cleanText(body.observation_description ?? '', LIMITS.observationDescription)
   if (!observation_title) return NextResponse.json({ error: 'Missing observation' }, { status: 400 })
+  if (observation_description === null) return badRequest('Description trop longue.')
+  const comments = (Array.isArray(body.comments) ? body.comments : [])
+    .slice(-20)
+    .filter((c): c is { author_id?: string; installer_name?: string; content: string } => !!c && typeof c.content === 'string')
+    .map((c) => ({ ...c, content: c.content.slice(0, LIMITS.comment) }))
 
   // Route publique (page installateur sans session) : il faut une session ou un lien installateur valide
   const { data: { user } } = await (await createClient()).auth.getUser()
@@ -19,8 +32,11 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  const commentsText = (comments ?? []).length > 0
-    ? (comments as { author_id?: string; installer_name?: string; content: string }[])
+  const limited = rateLimit(req, 'ai-suggest-reply', user?.id ?? String(token), { limit: 20, windowMs: 10 * MINUTE })
+  if (limited) return limited
+
+  const commentsText = comments.length > 0
+    ? comments
         .map((c) => `- ${c.author_id ? 'Conducteur' : (c.installer_name ?? 'Installateur')} : "${c.content}"`)
         .join('\n')
     : 'Aucun commentaire pour l\'instant.'
